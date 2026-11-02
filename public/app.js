@@ -907,70 +907,108 @@ function drawSnow() {
 }
 // Canal 7: cartel fijo «Dificultades técnicas», dibujado con la estética de la app (azules, rojo y amarillo del noticiero, tipografía Star4000).
 // Es la pantalla para cuando algo falla (servidor, emisión). El camarógrafo se tambalea con el mate en la mano.
-function drawTech(t) {
-  const NAVY = '#061050', BLUE = '#1b4fd8', RED = '#e0202b', YEL = '#ffd400', WHITE = '#ffffff', SKIN = '#f0b98a', INK = '#0b0f2a';
-  const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#071a55'); gr.addColorStop(1, BLUE);
-  g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
-  for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(W / 2, 270, 60 + i * 44, 0, 7); g.stroke(); }
-  // franja superior con el logo y el aviso intermitente
-  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, 0, W, 64);
-  logo(26, 17, 1.0);
-  if (Math.floor(t * 1.6) % 2 === 0) { g.fillStyle = RED; g.beginPath(); g.arc(W - 150, 32, 7, 0, 7); g.fill(); }
-  sTxt('SIN SENAL', W - 134, 40, WHITE, 18, 'left', true);
-  sTxt('DIFICULTADES TECNICAS', W / 2, 108, YEL, 38, 'center', true, W - 60);
-  // piso
-  g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(W / 2, 400, 230, 22, 0, 0, 7); g.fill();
-  // cámara sobre trípode
-  const cx = 190, cy = 250;
-  g.strokeStyle = INK; g.lineWidth = 6; g.lineCap = 'round';
-  [[cx, cy + 58, cx - 46, 392], [cx, cy + 58, cx + 46, 392], [cx, cy + 58, cx + 4, 396]].forEach(([x1, y1, x2, y2]) => { g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); });
-  g.fillStyle = INK; g.fillRect(cx - 5, cy + 36, 10, 26);
-  g.fillStyle = '#16203f'; g.fillRect(cx - 62, cy - 44, 112, 74);            // cuerpo
-  g.fillStyle = '#2a3a8f'; g.fillRect(cx - 58, cy - 40, 104, 66);
-  g.fillStyle = INK; g.fillRect(cx - 94, cy - 26, 36, 38);                    // lente
-  g.fillStyle = '#7fb4ff'; g.beginPath(); g.arc(cx - 94, cy - 7, 10, 0, 7); g.fill();
-  g.fillStyle = INK; g.fillRect(cx - 40, cy - 62, 62, 20);                    // visor
-  g.fillStyle = WHITE; g.beginPath(); g.ellipse(cx + 20, cy - 8, 20, 13, 0, 0, 7); g.fill();
-  g.fillStyle = BLUE; g.font = '900 15px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('P7', cx + 20, cy - 7);
-  if (Math.floor(t * 2) % 2 === 0) { g.fillStyle = RED; g.beginPath(); g.arc(cx - 46, cy - 30, 4, 0, 7); g.fill(); }   // luz de REC
-  // camarógrafo tambaleándose
-  const sw = Math.sin(t * 2.2), px = 400 + sw * 10, lean = sw * 0.07;
-  g.save(); g.translate(px, 392); g.rotate(lean); g.scale(0.9, 0.9);
-  g.strokeStyle = '#18246b'; g.lineWidth = 17; g.lineCap = 'round';          // piernas (una adelantada, como al pisar el cable)
-  g.beginPath(); g.moveTo(-8, -118); g.lineTo(-34, -50 + sw * 4); g.lineTo(-56, -8); g.stroke();
-  g.beginPath(); g.moveTo(8, -118); g.lineTo(26, -58); g.lineTo(22, -4); g.stroke();
-  g.fillStyle = INK; g.beginPath(); g.ellipse(-64, -2, 17, 8, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(32, 0, 17, 8, 0, 0, 7); g.fill();
-  g.fillStyle = RED; g.beginPath(); g.moveTo(-30, -128); g.lineTo(30, -128); g.lineTo(36, -200); g.lineTo(-36, -200); g.closePath(); g.fill();   // remera P7
-  g.fillStyle = WHITE; g.font = '900 20px Arial'; g.textAlign = 'center'; g.fillText('P7', 0, -162);
-  g.strokeStyle = SKIN; g.lineWidth = 12;                                    // brazo izquierdo sobre la cámara
-  g.beginPath(); g.moveTo(-30, -190); g.lineTo(-90, -176); g.lineTo(-134, -170); g.stroke();
-  g.fillStyle = SKIN; g.beginPath(); g.arc(-138, -170, 9, 0, 7); g.fill();
-  g.beginPath(); g.moveTo(30, -190); g.lineTo(76, -160); g.lineTo(88, -196 + sw * 6); g.stroke();   // brazo derecho con el mate
-  g.fillStyle = SKIN; g.beginPath(); g.arc(88, -200 + sw * 6, 9, 0, 7); g.fill();
-  const mx = 88, my = -214 + sw * 6;                                         // mate: calabaza + bombilla
-  g.fillStyle = '#6b3f1d'; g.beginPath(); g.moveTo(mx - 15, my - 14); g.lineTo(mx + 15, my - 14); g.quadraticCurveTo(mx + 17, my + 12, mx, my + 14); g.quadraticCurveTo(mx - 17, my + 12, mx - 15, my - 14); g.fill();
-  g.fillStyle = '#2f7a2a'; g.fillRect(mx - 15, my - 16, 30, 5);
-  g.strokeStyle = '#d8d8e0'; g.lineWidth = 3; g.beginPath(); g.moveTo(mx + 2, my - 14); g.lineTo(mx + 14, my - 42); g.stroke();
-  g.fillStyle = '#c0c8d8'; g.fillRect(-62, -176, 18, 44);                    // termo bajo el brazo
-  g.fillStyle = RED; g.fillRect(-62, -176, 18, 8);
-  g.fillStyle = SKIN; g.beginPath(); g.ellipse(0, -232, 30, 34, 0, 0, 7); g.fill();   // cabeza
-  g.fillRect(-7, -206, 14, 14);
-  g.fillStyle = WHITE; g.beginPath(); g.arc(-10, -236, 9, 0, 7); g.arc(12, -236, 9, 0, 7); g.fill();   // ojos desorbitados
-  g.fillStyle = INK; g.beginPath(); g.arc(-8 + Math.sin(t * 5) * 3, -236, 3.2, 0, 7); g.arc(14 + Math.cos(t * 5) * 3, -236, 3.2, 0, 7); g.fill();
-  g.fillStyle = INK; g.beginPath(); g.ellipse(2, -216, 9, 6 + Math.abs(sw) * 2, 0, 0, 7); g.fill();   // boca de «ay»
-  g.fillStyle = BLUE; g.beginPath(); g.ellipse(0, -258, 33, 18, 0, Math.PI, 0); g.fill(); g.fillRect(-33, -259, 70, 6);   // gorra
-  g.fillStyle = WHITE; g.font = '900 11px Arial'; g.fillText('P7', 0, -266);
+const TC = { NAVY: '#061050', BLUE: '#1b4fd8', RED: '#e0202b', YEL: '#ffd400', WHITE: '#ffffff', SKIN: '#f2bf90', SKIN2: '#d99a6c', INK: '#0b0f2a', PANTS: '#233a9e', SOFT: '#cfd8ff' };
+function tcLimb(pts, w, col) {   // miembro con contorno de dibujito
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  [[TC.INK, w + 6], [col, w]].forEach(([c, lw]) => { g.strokeStyle = c; g.lineWidth = lw; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); });
+}
+function tcBlob(draw, fill, lw = 3.5) { g.beginPath(); draw(); g.fillStyle = fill; g.fill(); g.lineWidth = lw; g.strokeStyle = TC.INK; g.lineJoin = 'round'; g.stroke(); }
+function tcStar(x, y, r, rot) { g.beginPath(); for (let k = 0; k < 8; k++) { const rr = k % 2 ? r * 0.42 : r, b = rot + k * Math.PI / 4; g.lineTo(x + Math.cos(b) * rr, y + Math.sin(b) * rr); } g.closePath(); g.fillStyle = TC.YEL; g.fill(); g.lineWidth = 1.5; g.strokeStyle = TC.INK; g.stroke(); }
+function drawTechCamera(t) {
+  const cx = 168, cy = 262, { INK, BLUE, RED, WHITE } = TC;
+  g.lineCap = 'round';
+  [[-50, 396], [52, 398], [4, 404]].forEach(([dx, y]) => { g.strokeStyle = INK; g.lineWidth = 9; g.beginPath(); g.moveTo(cx, cy + 50); g.lineTo(cx + dx, y); g.stroke(); g.strokeStyle = '#4a5a9a'; g.lineWidth = 4; g.stroke(); });
+  g.strokeStyle = INK; g.lineWidth = 4; g.beginPath(); g.moveTo(cx - 30, 372); g.lineTo(cx + 32, 374); g.stroke();   // riostra
+  tcBlob(() => g.rect(cx - 8, cy + 28, 16, 28), '#39467f');
+  tcBlob(() => g.roundRect(cx - 54, cy - 48, 118, 80, 6), '#2a3a8f');                                         // cuerpo
+  g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(cx - 50, cy - 44, 110, 9);
+  tcBlob(() => g.roundRect(cx - 34, cy - 70, 70, 22, 5), '#16203f');                                          // visor
+  tcBlob(() => g.rect(cx - 90, cy - 30, 38, 46), '#16203f');                                                   // portaobjetivo
+  tcBlob(() => g.arc(cx - 94, cy - 7, 24, 0, 7), '#0e1636');                                                  // lente
+  tcBlob(() => g.arc(cx - 94, cy - 7, 14, 0, 7), '#2f5fc4', 2.5);
+  g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.arc(cx - 99, cy - 13, 4, 0, 7); g.fill();
+  tcBlob(() => g.ellipse(cx + 24, cy - 8, 24, 15, 0, 0, 7), WHITE);                                           // chapa P7
+  g.fillStyle = BLUE; g.font = '900 17px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('P7', cx + 24, cy - 7);
+  const on = Math.floor(t * 2) % 2 === 0;                                                                      // luz de grabación
+  g.fillStyle = on ? RED : '#5a1020'; g.beginPath(); g.arc(cx - 40, cy - 34, 4.5, 0, 7); g.fill();
+  if (on) { g.fillStyle = 'rgba(224,32,43,.28)'; g.beginPath(); g.arc(cx - 40, cy - 34, 10, 0, 7); g.fill(); }
+  tcBlob(() => g.roundRect(cx + 46, cy - 30, 22, 8, 3), '#16203f', 2.5);                                      // manija
+}
+function drawTechCameraman(t) {
+  const { INK, RED, WHITE, SKIN, SKIN2, PANTS, BLUE, YEL } = TC;
+  const sw = Math.sin(t * 2.2), px = 408 + sw * 9;
+  g.save(); g.translate(px, 394); g.rotate(sw * 0.06); g.scale(0.9, 0.9);
+  g.textBaseline = 'middle';
+  tcLimb([[-8, -118], [-38, -58 + sw * 4], [-64, -10]], 18, PANTS);                                            // piernas
+  tcLimb([[8, -118], [26, -60], [24, -8]], 18, PANTS);
+  tcBlob(() => g.ellipse(-70, -3, 19, 9, 0.1, 0, 7), '#f4f0d5'); tcBlob(() => g.ellipse(33, -2, 19, 9, 0, 0, 7), '#f4f0d5');   // zapatillas
+  g.fillStyle = RED; g.fillRect(-82, -3, 12, 3); g.fillRect(24, -2, 12, 3);
+  tcBlob(() => { g.moveTo(-32, -126); g.lineTo(32, -126); g.lineTo(38, -204); g.quadraticCurveTo(0, -214, -38, -204); g.closePath(); }, RED);   // remera
+  g.fillStyle = 'rgba(0,0,0,.14)'; g.beginPath(); g.moveTo(14, -126); g.lineTo(32, -126); g.lineTo(38, -204); g.lineTo(22, -206); g.fill();      // sombra lateral
+  g.fillStyle = WHITE; g.fillRect(-33, -136, 66, 6);                                                           // ribete de la remera
+  g.fillStyle = WHITE; g.font = '900 22px Arial'; g.textAlign = 'center'; g.fillText('P7', -1, -168);
+  tcLimb([[-32, -194], [-92, -180], [-136, -172]], 12, SKIN);                                                  // brazo izquierdo apoyado en la cámara
+  tcBlob(() => g.arc(-141, -172, 10, 0, 7), SKIN);
+  tcLimb([[32, -194], [78, -164], [90, -202 + sw * 6]], 12, SKIN);                                             // brazo derecho con el mate
+  tcBlob(() => g.arc(90, -206 + sw * 6, 10, 0, 7), SKIN);
+  const mx = 90, my = -224 + sw * 6;                                                                           // mate: calabaza, yerba y bombilla
+  g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 3; g.lineCap = 'round';                               // vapor
+  for (let i = 0; i < 3; i++) { g.beginPath(); for (let k = 0; k <= 10; k++) { const yy = my - 20 - k * 4, xx = mx - 8 + i * 8 + Math.sin(t * 3 + i * 2 + k * 0.7) * 3; k ? g.lineTo(xx, yy) : g.moveTo(xx, yy); } g.globalAlpha = 0.5; g.stroke(); g.globalAlpha = 1; }
+  tcBlob(() => { g.moveTo(mx - 17, my - 14); g.lineTo(mx + 17, my - 14); g.quadraticCurveTo(mx + 19, my + 13, mx, my + 16); g.quadraticCurveTo(mx - 19, my + 13, mx - 17, my - 14); }, '#7a4a22');
+  tcBlob(() => g.ellipse(mx, my - 14, 17, 5, 0, 0, 7), '#3f8a2c', 2.5);
+  g.strokeStyle = INK; g.lineWidth = 6; g.beginPath(); g.moveTo(mx + 3, my - 14); g.lineTo(mx + 17, my - 46); g.stroke(); g.strokeStyle = '#e8ecf6'; g.lineWidth = 2.5; g.stroke();
+  tcBlob(() => g.roundRect(-70, -186, 20, 52, 5), '#c7cfe3'); g.fillStyle = RED; g.fillRect(-69, -184, 18, 10); g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(-64, -168, 4, 30);   // termo
+  tcBlob(() => g.roundRect(-9, -216, 18, 18, 4), SKIN2);                                                       // cuello
+  tcBlob(() => g.ellipse(-31, -240, 6, 9, 0, 0, 7), SKIN2); tcBlob(() => g.ellipse(31, -240, 6, 9, 0, 0, 7), SKIN2);   // orejas
+  tcBlob(() => g.ellipse(0, -240, 31, 35, 0, 0, 7), SKIN);                                                      // cabeza
+  g.fillStyle = 'rgba(224,32,43,.28)'; g.beginPath(); g.arc(-19, -228, 6, 0, 7); g.arc(19, -228, 6, 0, 7); g.fill();   // cachetes
+  tcBlob(() => g.ellipse(3, -236, 6, 8, 0, 0, 7), SKIN2, 2.5);                                                  // nariz
+  [[-11, -252], [11, -252]].forEach(([ex, ey], i) => { tcBlob(() => g.arc(ex, ey, 10, 0, 7), WHITE, 2.5); g.fillStyle = INK; g.beginPath(); g.arc(ex + Math.sin(t * 5 + i) * 3.5, ey + Math.cos(t * 5 + i) * 3.5, 3.6, 0, 7); g.fill(); });   // ojos desorbitados
+  g.strokeStyle = INK; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(-22, -268); g.lineTo(-5, -264); g.moveTo(22, -268); g.lineTo(5, -262); g.stroke();   // cejas
+  tcBlob(() => g.ellipse(2, -218, 11, 6 + Math.abs(sw) * 2.5, 0, 0, 7), '#3b0f18', 2.5); g.fillStyle = '#e8708a'; g.beginPath(); g.ellipse(2, -214, 6, 3, 0, 0, 7); g.fill();   // boca de «ay»
+  tcBlob(() => { g.moveTo(-34, -262); g.quadraticCurveTo(-30, -296, 0, -298); g.quadraticCurveTo(30, -296, 34, -262); g.closePath(); }, BLUE);   // gorra
+  tcBlob(() => { g.moveTo(-34, -262); g.quadraticCurveTo(0, -252, 52, -264); g.quadraticCurveTo(48, -272, 34, -272); g.lineTo(-34, -270); g.closePath(); }, '#1440b0');   // visera
+  g.fillStyle = WHITE; g.font = '900 12px Arial'; g.fillText('P7', 0, -282);
+  const dr = (t * 1.3) % 1;                                                                                    // gotas de sudor
+  [[-1, 0], [1, 0.5]].forEach(([d, o]) => { const q = (dr + o) % 1; g.globalAlpha = 1 - q; tcBlob(() => { const x = d * (38 + q * 22), y = -262 + q * 34; g.moveTo(x, y - 8); g.quadraticCurveTo(x + 6, y, x, y + 5); g.quadraticCurveTo(x - 6, y, x, y - 8); }, '#8fd0ff', 2); g.globalAlpha = 1; });
   g.restore();
-  // estrellitas de mareo girando sobre la cabeza
-  for (let i = 0; i < 4; i++) { const a = t * 2.6 + i * Math.PI / 2, x = px + Math.cos(a) * 46, y = 392 - 242 + Math.sin(a) * 9; g.fillStyle = YEL; g.beginPath(); for (let k = 0; k < 8; k++) { const r = k % 2 ? 2.5 : 6, b = k * Math.PI / 4; g.lineTo(x + Math.cos(b) * r, y + Math.sin(b) * r); } g.closePath(); g.fill(); }
-  // cable de la cámara por el piso
-  g.strokeStyle = INK; g.lineWidth = 4; g.beginPath(); g.moveTo(cx + 4, 396); g.bezierCurveTo(250, 440, 300, 360, 350, 402); g.bezierCurveTo(380, 424, 330, 436, 360, 410); g.stroke();
-  // leyenda
-  g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(0, 418, W, 62);
-  sTxt('POR FAVOR, NO CAMBIE DE CANAL', W / 2, 446, WHITE, 22, 'center', true, W - 60);
-  sTxt('Volvemos en cuanto el camarografo encuentre el cable', W / 2, 470, '#cfd8ff', 14, 'center', false, W - 60);
-  g.textAlign = 'left';
+  for (let i = 0; i < 4; i++) { const a = t * 2.6 + i * Math.PI / 2; tcStar(px + Math.cos(a) * 52, 394 - 262 + Math.sin(a) * 11, 7, a); }   // estrellitas de mareo
+}
+function drawTech(t) {
+  const { NAVY, BLUE, RED, YEL, WHITE, INK, SOFT } = TC;
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#04103f'); gr.addColorStop(0.6, '#123fc0'); gr.addColorStop(1, '#1b4fd8');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  const sp = g.createRadialGradient(W / 2, 250, 20, W / 2, 250, 330); sp.addColorStop(0, 'rgba(160,200,255,.30)'); sp.addColorStop(1, 'rgba(160,200,255,0)');
+  g.fillStyle = sp; g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 14;                                                  // rayos del fondo
+  for (let i = -3; i < 10; i++) { g.beginPath(); g.moveTo(i * 90 + 40, 70); g.lineTo(i * 90 - 120, 420); g.stroke(); }
+  const fl = g.createLinearGradient(0, 372, 0, 420); fl.addColorStop(0, '#0a1a63'); fl.addColorStop(1, '#050b33');
+  g.fillStyle = fl; g.fillRect(0, 372, W, 50);                                                                 // piso
+  g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(0, 372, W, 2);
+  g.fillStyle = 'rgba(0,0,0,.30)'; g.beginPath(); g.ellipse(168, 402, 70, 9, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(408, 398, 78, 9, 0, 0, 7); g.fill();   // sombras
+  // franja superior: logo, barras de ajuste en miniatura y aviso intermitente
+  g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(0, 0, W, 58);
+  ['#c0c0c0', '#c0c000', '#00c0c0', '#00c000', '#c000c0', '#c00000', '#0000c0'].forEach((c, i) => { g.fillStyle = c; g.fillRect((W / 7) * i, 58, W / 7 + 1, 5); });
+  logo(24, 14, 1.0); sTxt('PAMPA 7 NOTICIAS', 80, 38, WHITE, 18, 'left', true);
+  const on = Math.floor(t * 1.6) % 2 === 0; g.fillStyle = on ? RED : '#5a1020'; g.beginPath(); g.arc(W - 150, 30, 7, 0, 7); g.fill();
+  sTxt('SIN SENAL', W - 134, 38, WHITE, 18, 'left', true);
+  // título
+  g.fillStyle = RED; g.fillRect(36, 104, W - 72, 4);
+  sTxt('DIFICULTADES TECNICAS', W / 2, 100, YEL, 42, 'center', true, W - 80);
+  drawTechCamera(t); drawTechCameraman(t);
+  // cable desde la cámara hasta una ficha tirada en el piso
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  [[INK, 9], ['#2b3a78', 5]].forEach(([c, lw]) => { g.strokeStyle = c; g.lineWidth = lw; g.beginPath(); g.moveTo(172, 402); g.bezierCurveTo(230, 424, 290, 378, 322, 398); g.bezierCurveTo(340, 410, 318, 414, 336, 404); g.stroke(); });
+  tcBlob(() => g.roundRect(332, 396, 20, 12, 3), '#c7cfe3', 2.5);
+  // cinta de novedades, como las del noticiero
+  g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, 414, W, 66);
+  g.fillStyle = RED; g.fillRect(0, 414, W, 4);
+  sTxt('POR FAVOR, NO CAMBIE DE CANAL', W / 2, 448, WHITE, 24, 'center', true, W - 60);
+  g.fillStyle = BLUE; g.fillRect(0, 456, W, 24); g.fillStyle = YEL; g.fillRect(0, 456, 70, 24);
+  g.font = '13px Star4000'; g.fillStyle = INK; g.textAlign = 'center'; g.fillText('AHORA', 35, 473); g.save(); g.beginPath(); g.rect(70, 456, W - 70, 24); g.clip();
+  const tk = 'VOLVEMOS EN CUANTO EL CAMAROGRAFO ENCUENTRE EL CABLE  ///  NO MUEVA EL DIAL  ///  ESTAMOS TRABAJANDO PARA VOLVER AL AIRE  ///  ', tw = (g.font = '14px Star4000', g.measureText(tk).width);
+  for (let k = 0; k < 3; k++) sTxt(tk, 80 + k * tw - ((t * 60) % tw), 474, YEL, 14);
+  g.restore(); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
 function drawIdle(t) {
   if (S.ch === 7) drawTech(t);
