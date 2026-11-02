@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { SEGMENTS, CLIMA } from '../public/seed.js';
 
 const OUT = new URL('../public/audio/', import.meta.url).pathname, FORCE = process.argv.includes('--force');
-const SPEED = process.env.VOZ_VELOCIDAD || '112', PITCH = process.env.VOZ_TONO || '100';   // pico2wave: 20–500 / 50–200
+const SPEED = process.env.VOZ_VELOCIDAD || '130', PITCH = process.env.VOZ_TONO || '100';   // pico2wave: 20–500 / 50–200
 mkdirSync(OUT, { recursive: true });
 
 const U = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve'];
