@@ -4,7 +4,7 @@
 import http from 'node:http';
 import assert from 'node:assert/strict';
 
-const KEY = 'service-key-de-prueba', tables = { segments: [], embeds: [] }, rate = new Map(), log = [];
+const presence = new Set(); const KEY = 'service-key-de-prueba', tables = { segments: [], embeds: [] }, rate = new Map(), log = [];
 const readJson = (req) => new Promise((r) => { let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => r(b ? JSON.parse(b) : undefined)); });
 const mock = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://m'), body = await readJson(req), p = u.pathname.replace('/rest/v1/', '');
@@ -12,6 +12,7 @@ const mock = http.createServer(async (req, res) => {
   const send = (s, d) => { res.writeHead(s, { 'content-type': 'application/json' }); res.end(d === undefined ? '' : JSON.stringify(d)); };
   if (req.headers.apikey !== KEY || req.headers.authorization !== `Bearer ${KEY}`) return send(401, { message: 'bad key' });
   const eqf = (rows) => rows.filter((r) => [...u.searchParams].every(([k, v]) => !v.startsWith('eq.') || String(r[k]) === v.slice(3)));
+  if (p === 'rpc/presence_ping') { presence.add(body.p_id); return send(200, presence.size); }
   if (p === 'rpc/bump_limit') { const n = (rate.get(body.p_key) || 0) + 1; rate.set(body.p_key, n); return send(200, n <= body.p_lim); }
   const t = tables[p]; if (!t) return send(404, { message: 'no table' });
   if (req.method === 'GET') { let rows = eqf(t.slice()); if (p === 'segments') rows.sort((a, b) => b.created_at.localeCompare(a.created_at)); return send(200, rows.slice(0, Number(u.searchParams.get('limit')) || 1000)); }
@@ -52,6 +53,8 @@ try {
   r = await call('/api/admin?p=segments', { ...good, titular: 'Colaboración con permiso del autor', autor: 'Creadora Ejemplo', video: 'https://cdn.example/clip.mp4', permiso: true }, 'secreto'); assert.equal(r.status, 200);
   const colab = tables.segments.find((s) => s.source === 'colab'); assert.equal(colab.status, 'approved'); assert.equal(colab.data.video, 'https://cdn.example/clip.mp4'); ok('colaboración con video guardada');
   r = await call(`/api/admin?p=segments/${row.id}/delete`, {}, 'secreto'); assert.equal(tables.segments.some((s) => s.id === row.id), false); ok('baja de segmento');
+  r = await call('/api/presence', { id: 'pestana0001' }); assert.equal(r.json.online, 1); r = await call('/api/presence', { id: 'pestana0002' }); assert.equal(r.json.online, 2);
+  assert.ok(log.some((l) => l.startsWith('POST rpc/presence_ping'))); ok('gente en línea vía RPC presence_ping de Supabase (y número real aun en modo Vercel)');
   r = await call('/api/no-existe'); assert.equal(r.status, 404); ok('ruta desconocida = 404 JSON');
   console.log(`\n${n} verificaciones ok`);
 } catch (e) { console.error('FALLÓ:', e.stack || e.message); process.exitCode = 1; } finally { mock.close(); app.close(); setTimeout(() => process.exit(process.exitCode || 0), 100); }

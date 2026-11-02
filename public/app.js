@@ -500,6 +500,24 @@ placePanels();
 $('optFilter').onchange = (e) => { S.filter = e.target.checked; };
 $('btnFull').onclick = fullscreen;
 
+/* ---------------- Gente en línea (latido anónimo: un id al azar por pestaña, sin cookies ni datos personales) ---------------- */
+const PID = (() => {
+  try { let v = sessionStorage.getItem('p7pid'); if (!v) { v = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 20); sessionStorage.setItem('p7pid', v); } return v; }
+  catch { return Math.random().toString(36).slice(2, 12) + Date.now().toString(36); }
+})();
+async function pingPresence() {
+  if (document.hidden) return;
+  try {
+    const r = await fetch('/api/presence', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: PID }) });
+    if (!r.ok) return;
+    const { online } = await r.json(), el = $('presence');
+    if (Number.isInteger(online) && online > 0) { el.hidden = false; $('presenceN').textContent = online; el.setAttribute('aria-label', `${online} ${online === 1 ? 'persona viendo' : 'personas viendo'} ahora`); el.title = el.getAttribute('aria-label'); }
+    else el.hidden = true;
+  } catch { /* sin servidor: no se muestra */ }
+}
+pingPresence(); setInterval(pingPresence, 45000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pingPresence(); });
+
 /* ---------------- Dibujo ---------------- */
 const scan = document.createElement('canvas'); scan.width = 4; scan.height = 3;
 { const c = scan.getContext('2d'); c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(0, 0, 4, 1); }

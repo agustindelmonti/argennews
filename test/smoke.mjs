@@ -45,5 +45,9 @@ try {
   r = await call('/admin/api/segments', { ...good, autor: 'X' }, 'secreto'); assert.equal(r.status, 400); ok('colaboración exige permiso');
   r = await call('/api/programacion'); const colab = r.json.segments.find((s) => s.source === 'colab'); assert.equal(colab.credito, 'Gentileza de Creadora Ejemplo'); assert.equal(colab.video, 'https://cdn.example/clip.mp4'); ok('colaboración con video y crédito');
   r = await call('/admin/api/trends/generate', { topics: ['lluvia'] }, 'secreto'); assert.equal(r.status, 400); ok('tendencias sin API key = error claro');
+  r = await call('/api/presence', { id: 'pestana0001' }); assert.equal(r.json.online, 1);
+  r = await call('/api/presence', { id: 'pestana0002' }); assert.equal(r.json.online, 2);
+  r = await call('/api/presence', { id: 'pestana0002' }); assert.equal(r.json.online, 2);
+  r = await call('/api/presence', { id: 'x' }); assert.equal(r.status, 400); ok('gente en línea: cuenta ids distintos, no duplica y rechaza ids inválidos');
   console.log(`\n${n} verificaciones ok`);
 } catch (e) { console.error('FALLÓ:', e.message); process.exitCode = 1; } finally { srv.kill(); rmSync(DIR, { recursive: true, force: true }); }
