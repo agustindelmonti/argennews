@@ -161,6 +161,10 @@ textarea{resize:none}
 .vb:disabled{opacity:.35;cursor:not-allowed}
 .vb.up.lit{color:#06210b;background:linear-gradient(#7dff8a,#3fd24f);box-shadow:0 3px 0 #0009,0 0 10px #5dff6a99}
 .vb.down.lit{color:#2a0505;background:linear-gradient(#ff8c82,#e0202b);box-shadow:0 3px 0 #0009,0 0 10px #ff4a3a99}
+.vb.tv{margin-left:clamp(4px,.8vmin,8px)}
+.vb.tv.busy{animation:recblink 1s steps(2,end) infinite;color:#ff6b61}
+@keyframes recblink{50%{opacity:.45}}
+.rec-tv #chin{display:none}   /* mientras se graba el televisor: solo marco y pantalla */
 .vb:focus-visible{outline:3px solid var(--yel);outline-offset:2px}
 
 /* Compartir */

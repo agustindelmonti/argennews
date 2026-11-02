@@ -32,7 +32,7 @@ fetch('/api/config').then((r) => r.json()).then((c) => { S.config = c; }).catch(
 /* ---------------- OSD: mensajes, badge de canal, volumen ---------------- */
 const timers = {};
 function flash(id, ms) { const el = $(id); el.hidden = false; clearTimeout(timers[id]); timers[id] = setTimeout(() => (el.hidden = true), ms); }
-function say(t, ms = 3200) { if (!S.on) return; $('msg').dataset.pos = S.ch === 3 && !S.guide ? 'top' : 'bottom'; $('msg').textContent = t; flash('msg', ms); }
+function say(t, ms = 3200) { if (!S.on || S.rec) return; $('msg').dataset.pos = S.ch === 3 && !S.guide ? 'top' : 'bottom'; $('msg').textContent = t; flash('msg', ms); }
 function badge() { if (!S.on) return; $('chbadge').innerHTML = `CH ${String(S.ch).padStart(2, '0')}<small>${CH_NAMES[S.ch]}</small>`; flash('chbadge', 2200); }
 function volOsd() {
   const n = S.muted ? 0 : Math.round(S.vol * 10);
@@ -712,6 +712,7 @@ const saveVotes = () => { try { localStorage.setItem('p7votes', JSON.stringify(M
 const votableId = () => (S.on && S.mode === 'air' && S.air && !S.air.cancel && !S.air.mine && S.air.seg?.id ? S.air.seg.id : null);
 function renderVote() {
   const id = votableId(), mine = id ? MY_VOTES[id] || 0 : 0;
+  $('btnTV').disabled = !S.on || !!S.rec;
   [['btnUp', 1], ['btnDown', -1]].forEach(([b, v]) => { const el = $(b); el.disabled = !id; el.setAttribute('aria-pressed', String(mine === v)); el.classList.toggle('lit', mine === v); });
 }
 async function castVote(v) {
@@ -723,6 +724,56 @@ async function castVote(v) {
   try { await fetch('/api/vote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ seg: id, voter: VID, v: next }) }); } catch { /* sin servidor: queda solo en tu navegador */ }
 }
 $('btnUp').onclick = () => castVote(1); $('btnDown').onclick = () => castVote(-1);
+
+/* ---------------- Descargar lo que ves: el televisor entero (marco + pantalla) con la voz del navegador ---------------- */
+// La voz del navegador (speechSynthesis) no entra en una grabación del canvas, pero sí en el audio de la pestaña.
+// Por eso se graba la pestaña (getDisplayMedia + Region Capture, recortada al televisor) mientras la noticia sale al aire de nuevo desde el principio.
+// Solo en navegadores que lo permiten (Chrome/Edge en compu); en el resto el botón no aparece.
+const canRecTV = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && window.CropTarget && window.MediaRecorder);
+$('btnTV').hidden = !canRecTV;
+async function recordTV() {
+  if (!canRecTV || S.rec || !S.on) return;
+  if (S.ch !== 3 && S.ch !== 5) { say('Sintonizá el canal 3 o 5 para descargar un clip.', 3000); return; }
+  ensureAudio();
+  let stream;
+  try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude', systemAudio: 'exclude' }); }
+  catch { say('Descarga cancelada.', 2200); return; }
+  const track = stream.getVideoTracks()[0], saved = { muted: S.muted, vol: S.vol }, cur = S.air && !S.air.cancel ? S.air.seg : null;
+  let ended = false, cleaned = false;
+  const finish = () => {
+    if (cleaned) return; cleaned = true;
+    stream.getTracks().forEach((t) => t.stop());
+    S.rec = false; document.body.classList.remove('rec-tv'); $('btnTV').classList.remove('busy');
+    S.muted = saved.muted; S.vol = saved.vol; applyVolume(); renderVote();
+  };
+  S.rec = true; $('btnTV').classList.add('busy');
+  document.body.classList.add('rec-tv');                       // sin la base del televisor: solo marco y pantalla
+  S.muted = false; S.vol = Math.max(S.vol, 0.7); applyVolume(); // el audio de la pestaña sale de los parlantes: no puede estar en mute
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  try { await track.cropTo(await CropTarget.fromElement($('cabinet'))); }
+  catch { finish(); say('Elegí «Esta pestaña» para grabar el televisor.', 3500); return; }
+  track.addEventListener('ended', () => { ended = true; if (S.air) S.air.cancel = true; });
+  const myLoop = ++S.loopId; await stopAir(); S.staticUntil = performance.now() + 450;
+  const chunks = [], mime = pickMime(), noAudio = !stream.getAudioTracks().length;
+  let rec;
+  try { rec = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 6e6 }); } catch { finish(); say('Este navegador no puede grabar.', 3000); startLoop(); return; }
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  rec.start(250);
+  await sleep(450);
+  const seg = cur && (!cur.mine || ready()) ? cur : nextSeg();
+  if (seg) await onAir(false, seg);
+  await sleep(500);
+  await new Promise((res) => { rec.onstop = res; rec.stop(); });
+  const ok = !ended && S.on && S.loopId === myLoop && chunks.length;
+  finish();
+  if (ok) {
+    const type = rec.mimeType || mime || 'video/webm', ext = type.includes('mp4') ? 'mp4' : 'webm';
+    downloadClip({ blob: new Blob(chunks, { type }), ext }, true);
+    say(noAudio ? 'Descargado, pero sin sonido (marcá «compartir audio de la pestaña»).' : `Descargado como .${ext}. ¡Subilo a tus redes!`, 4500);
+  } else say('Se cortó la grabación. Probá de nuevo sin cambiar de canal.', 3500);
+  if (S.on && (S.ch === 3 || S.ch === 5) && S.loopId === myLoop) startLoop();
+}
+$('btnTV').onclick = () => { blip(660, 0.06); recordTV(); };
 
 /* ---------------- Dibujo ---------------- */
 const scan = document.createElement('canvas'); scan.width = 4; scan.height = 3;
