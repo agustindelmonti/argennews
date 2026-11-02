@@ -394,8 +394,11 @@ async function runAir(rec, seg) {
       // Sin video propio: el conductor aparece solo al principio y después la escena pasa a las imágenes (emojis o clima) mientras sigue hablando,
       // así no hay que esperar a que termine todo el texto para ver algo.
       a.voiceDur = buf ? buf.duration : Math.min(16, words * 0.33 + 0.6);
-      a.intro = Math.max(4.5, 0.8 + a.voiceDur * 0.4);
-      a.clipDur = Math.max(a.clipDur, 0.8 + a.voiceDur + 0.5 - a.intro);
+      // Se mide desde el final: las imágenes ocupan los últimos 6 a 8 s de la lectura (según cuánto dure), y el conductor todo lo anterior.
+      // La duración de la voz se conoce de antemano si hay audio pregrabado (exacta); con la voz del navegador es una estimación por palabras.
+      const voiceEnd = 0.8 + a.voiceDur, tail = Math.min(8, Math.max(6, a.voiceDur * 0.5));
+      a.intro = Math.max(3.5, voiceEnd - tail);
+      a.clipDur = Math.max(a.clipDur, voiceEnd + 0.5 - a.intro);
     } else a.intro = buf ? Math.max(4.5, buf.duration + 1) : Math.min(9, Math.max(4.5, words * 0.33 + 1.5));
     a.total = a.intro + a.clipDur + (mine ? 1.6 : 0.6);
     let recorder = null;
