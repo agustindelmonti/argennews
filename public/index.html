@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pampa 7 Noticias</title>
+<meta name="description" content="Grabá un video de 10 segundos y Pampa 7 Noticias lo convierte en una noticia de último momento. Humor, nostalgia y IA.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="set">
+  <div id="tv">
+    <div id="cabinet">
+      <div id="screenwrap">
+        <canvas id="screen" width="640" height="480" aria-label="Pantalla del televisor"></canvas>
+        <div id="osd">
+          <div id="chbadge" hidden></div>
+          <div id="volbar" hidden></div>
+          <div id="msg" role="status" hidden></div>
+
+          <section class="page" id="pCam" hidden aria-label="Canal 1, Cámara">
+            <h2>Canal 1 · Cámara</h2>
+            <p>Grabá 10 segundos o subí un video. Con eso armamos tu noticia.</p>
+            <div class="row">
+              <button class="osd-btn danger" id="btnRec">● Grabar</button>
+              <label class="osd-btn" id="lblFile">Subir video<input id="file" type="file" accept="video/*" hidden></label>
+            </div>
+            <p id="camInfo" class="note"></p>
+          </section>
+
+          <section class="page" id="pDesk" hidden aria-label="Canal 2, Redacción">
+            <h2>Canal 2 · Redacción</h2>
+            <div id="deskEmpty"><p>Todavía no hay video. Sintonizá el canal 1 para cargar uno.</p>
+              <div class="row"><button class="osd-btn" data-goto="1">Ir al canal 1</button></div></div>
+            <div id="deskGen" hidden>
+              <label class="check"><input type="checkbox" id="consent">
+                <span>Acepto que unos fotogramas de mi video se envíen a una IA para escribir la noticia. Es humor y ficción. El video no se guarda.</span></label>
+              <div class="row"><button class="osd-btn danger" id="btnGen" disabled>Generar noticia</button></div>
+            </div>
+            <div id="deskForm" hidden>
+              <div class="grid">
+                <label>Etiqueta<input id="fEtiqueta" maxlength="24"></label>
+                <label>Móvil<input id="fMovil" maxlength="44"></label>
+                <label class="wide">Titular<input id="fTitular" maxlength="60"></label>
+                <label class="wide">Bajada<input id="fBajada" maxlength="100"></label>
+                <label class="wide">Texto del conductor<textarea id="fConductor" rows="2" maxlength="300"></textarea></label>
+              </div>
+              <div class="row"><button class="osd-btn danger" id="btnToAir">▶ Al aire (canal 3)</button><button class="osd-btn" id="btnRegen">Otra versión</button></div>
+              <p class="note" id="hint"></p>
+            </div>
+          </section>
+
+          <div id="pAir" hidden>
+            <button class="osd-btn" id="btnAgain">↻ Mi noticia</button>
+            <button class="osd-btn danger" id="btnDl">⬇ Descargar mía</button>
+          </div>
+
+          <section class="page" id="pStudio" hidden aria-label="Canal 4, Estudio">
+            <h2>Canal 4 · Estudio</h2>
+            <label class="check"><input type="checkbox" id="optFilter" checked><span>Filtro analógico (scanlines, ruido, viñeta)</span></label>
+            <div class="row"><button class="osd-btn" id="btnFull">⛶ Pantalla completa</button></div>
+            <p class="note">Próximamente: canal comunidad con las noticias de otros espectadores y formatos de noticiero (policiales, farándula, deportes).</p>
+            <p class="note">Pampa 7 Noticias es un canal ficticio de humor. Cualquier parecido con la realidad es pura coincidencia.</p>
+          </section>
+
+          <section class="page" id="pGuide" hidden aria-label="Guía de canales">
+            <h2>Guía de canales</h2>
+            <ul id="guide">
+              <li><button class="osd-btn" data-goto="1"><b>1</b> Cámara <small>grabá o subí tu video</small></button></li>
+              <li><button class="osd-btn" data-goto="2"><b>2</b> Redacción <small>generá y editá la noticia</small></button></li>
+              <li><button class="osd-btn" data-goto="3"><b>3</b> Pampa 7 <small>noticias sin parar</small></button></li>
+              <li><button class="osd-btn" data-goto="4"><b>4</b> Estudio <small>ajustes y novedades</small></button></li>
+            </ul>
+          </section>
+        </div>
+        <div id="glass"></div>
+      </div>
+    </div>
+  </div>
+
+  <nav id="remote" aria-label="Controles del televisor">
+    <button class="rb power" data-act="power" aria-label="Encender o apagar" title="Encender / apagar (P)">⏻</button>
+    <button class="rb" data-act="guide" title="Guía de canales (G)">MENÚ</button>
+    <button class="rb" data-act="chup" title="Canal siguiente (↑)">CH ▲</button>
+    <button class="rb" data-act="chdn" title="Canal anterior (↓)">CH ▼</button>
+    <button class="rb" data-act="volup" title="Subir volumen (→ o +)">VOL +</button>
+    <button class="rb" data-act="voldn" title="Bajar volumen (← o -)">VOL −</button>
+    <button class="rb" data-act="mute" title="Silenciar (M)" id="rbMute">MUTE</button>
+    <button class="rb" data-act="full" title="Pantalla completa (F)">⛶</button>
+  </nav>
+</div>
+<video id="vid" playsinline preload="auto" hidden></video>
+<video id="preview" muted playsinline hidden></video>
+<script type="module" src="app.js"></script>
+</body>
+</html>

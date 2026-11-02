@@ -1,0 +1,65 @@
+/* Un televisor que ocupa toda la ventana. La pantalla es siempre 4:3; el menú vive adentro (OSD). */
+:root{color-scheme:dark;--bg:#07080c;--case1:#2d303b;--case2:#14151b;--ink:#f2f4fa;--yel:#ffd400;--red:#e0202b;--blue:#1b4fd8;--navy:#061050}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+
+#set{height:100dvh;display:flex;align-items:center;justify-content:center;gap:clamp(8px,1.6vw,22px);padding:clamp(8px,2vmin,22px);padding-left:max(clamp(8px,2vmin,22px),env(safe-area-inset-left,0px));padding-right:max(clamp(8px,2vmin,22px),env(safe-area-inset-right,0px))}
+#tv{--pad:clamp(8px,1.8vmin,20px);flex:0 1 calc((100dvh - 4vmin) * 4 / 3);min-width:0;height:100%;container-type:size;display:grid;place-items:center}
+#cabinet{width:min(100cqw,calc((100cqh - 2 * var(--pad)) * 4 / 3 + 2 * var(--pad)));padding:var(--pad);border-radius:clamp(14px,3vmin,34px);background:linear-gradient(150deg,var(--case1),var(--case2));box-shadow:0 1.5vmin 6vmin #000c,inset 0 1px 0 #ffffff22,inset 0 -2px 6px #000a}
+#screenwrap{position:relative;width:100%;aspect-ratio:4/3;container-type:inline-size;overflow:hidden;background:#000;border-radius:5% / 6.5%;box-shadow:0 0 0 .5cqw #000,inset 0 0 6cqw #000}
+#screen{position:absolute;inset:0;width:100%;height:100%;display:block}
+#glass{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(120% 90% at 30% 10%,#ffffff14,transparent 55%),radial-gradient(ellipse at center,transparent 62%,#0009 100%)}
+
+/* ---- OSD ---- */
+#osd{position:absolute;inset:0;font-size:max(11px,3.1cqw);line-height:1.35;text-shadow:.15em .15em 0 #000}
+#chbadge{z-index:4;position:absolute;top:5%;right:6%;font-family:'VT323',monospace,monospace;color:#5dff6a;font-size:2.2em;letter-spacing:.06em;text-align:right;text-shadow:.08em .08em 0 #000;line-height:1}
+#chbadge small{display:block;font-size:.55em;color:#c9ffd0}
+#volbar{z-index:4;position:absolute;left:6%;top:5%;font-family:'VT323',monospace,monospace;color:#5dff6a;font-size:1.9em;letter-spacing:.08em}
+#msg{position:absolute;left:50%;bottom:1.5%;transform:translateX(-50%);width:max-content;max-width:90%;background:#000c;border:.3cqw solid #fff;padding:.35em .9em;text-align:center;font-weight:700;z-index:3}
+.page{position:absolute;inset:8% 7% 14%;overflow:auto;padding:.9em 1.3em;background:rgba(6,16,80,.9);border:.4cqw solid #fff;box-shadow:.8cqw .8cqw 0 #000a;scrollbar-width:thin}
+.page h2{margin:0 0 .6em;font-size:1.25em;text-transform:uppercase;letter-spacing:.1em;color:var(--yel)}
+.page p{margin:0 0 .8em}
+.note{font-size:.85em;color:#c9d3ff}
+.row{display:flex;flex-wrap:wrap;gap:.7em;margin:.4em 0 .8em}
+.osd-btn{font:inherit;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#fff;background:var(--blue);border:.3cqw solid #fff;padding:.45em 1em;cursor:pointer;text-shadow:.1em .1em 0 #000;display:inline-block}
+.osd-btn.danger{background:var(--red)}
+.osd-btn:hover:not(:disabled){filter:brightness(1.2)}
+.osd-btn:disabled{opacity:.4;cursor:not-allowed}
+.osd-btn:focus-visible,.osd-btn:focus-within,.rb:focus-visible,input:focus-visible,textarea:focus-visible{outline:.45cqw solid var(--yel);outline-offset:.2cqw}
+.rb:focus-visible{outline:3px solid var(--yel);outline-offset:2px}
+.check{display:flex;flex-direction:row;gap:.7em;align-items:flex-start;margin-bottom:.8em}
+.check input{margin-top:.3em;width:1.1em;height:1.1em;flex:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:.5em .8em;margin-bottom:.4em}
+.grid .wide{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:.15em;font-size:.85em;color:#c9d3ff}
+.check span{font-size:.9em;color:var(--ink)}
+input:not([type=checkbox]),textarea{font:inherit;color:#fff;background:#000b;border:.2cqw solid #fff9;padding:.25em .5em;text-shadow:none;width:100%}
+textarea{resize:none}
+#guide{list-style:none;margin:0;padding:0;display:grid;gap:.6em}
+#guide .osd-btn{width:100%;text-align:left;display:flex;gap:.8em;align-items:baseline}
+#guide b{font-family:'VT323',monospace;font-size:1.6em;color:var(--yel);min-width:1em}
+#guide small{margin-left:auto;font-weight:400;text-transform:none;letter-spacing:0;opacity:.85}
+#pAir{position:absolute;top:16%;right:3%;display:flex;flex-direction:column;gap:.4em;z-index:2}
+#pAir .osd-btn{font-size:.72em;padding:.25em .6em}
+
+/* ---- Panel lateral / control remoto ---- */
+#remote{flex:none;width:clamp(76px,9vw,112px);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:clamp(6px,1.2vmin,12px);padding:clamp(8px,1.4vmin,14px);border-radius:18px;background:linear-gradient(160deg,var(--case1),var(--case2));box-shadow:0 1vmin 3vmin #000a,inset 0 1px 0 #ffffff22;scrollbar-width:none}
+.rb{font:inherit;font-weight:700;font-size:clamp(11px,1.5vmin,14px);letter-spacing:.04em;color:#dfe3f2;background:linear-gradient(#3b3f4e,#262935);border:1px solid #0008;border-radius:10px;padding:clamp(9px,1.8vmin,14px) 4px;cursor:pointer;box-shadow:0 3px 0 #0009,inset 0 1px 0 #ffffff2a;min-height:40px}
+.rb:active{transform:translateY(2px);box-shadow:0 1px 0 #0009}
+.rb.power{background:linear-gradient(#e0202b,#9c1019);color:#fff;font-size:clamp(16px,2.4vmin,22px)}
+.rb.on{background:linear-gradient(#ffd400,#c9a600);color:#1a1400}
+
+@media (max-aspect-ratio:1/1){
+  #set{flex-direction:column;gap:12px;justify-content:center}
+  #tv{flex:none;width:100%;height:auto;container-type:normal;display:block}
+  #cabinet{width:100%}
+  #remote{flex-direction:row;flex-wrap:wrap;width:100%;justify-content:center;max-height:none;overflow:visible}
+  .rb{flex:1 1 56px;padding:10px 2px}
+  #osd{font-size:max(10px,3.3cqw)}
+}
+/* Mientras se graba con la cámara, la pantalla muestra solo la imagen en vivo y el botón de detener. */
+#pCam.clear{background:transparent;border:0;box-shadow:none;display:flex;flex-direction:column;justify-content:flex-end;pointer-events:none}
+#pCam.clear h2,#pCam.clear p{display:none}
+#pCam.clear .row{pointer-events:auto}
+#pCam.clear #lblFile{display:none}
