@@ -12,7 +12,7 @@ const cv = $('screen'), g = cv.getContext('2d');
 const vid = $('vid'), vid2 = $('vid2'), live = $('preview');
 
 const S = {
-  on: true, ch: 3, prevCh: 0, deskBack: false, guide: false, filter: true, userNext: false, sinceMine: 0, order: [],
+  on: true, ch: 3, prevCh: 0, wantHow: false, seenHow: false, deskBack: false, guide: false, filter: true, userNext: false, sinceMine: 0, order: [],
   vol: 0.6, muted: false,
   mode: 'idle',                // idle | live | air
   config: { demo: true, tts: false },
@@ -125,7 +125,7 @@ function renderPages() {
   if (!S.on) return;
   if (S.guide) { show('pGuide', true); focusFirst('pGuide'); return; }
   if (PAGES[S.ch]) { show(PAGES[S.ch], true); focusFirst(PAGES[S.ch]); }
-  if (S.ch === 3) show('pAir', ready());
+  if (S.ch === 3) { show('pAir', true); $('btnAgain').hidden = $('btnDl').hidden = !ready(); }   // siempre visible: tiene el acceso a conectar la IA
   if (S.ch === 1) $('btnNext').hidden = !(S.clipDur > 0);
   if (S.ch === 2) refreshDesk();
   if (S.ch === 5) { show('pComBar', true); if (S.how) { show('pHow', true); focusFirst('pHow'); } }
@@ -143,12 +143,12 @@ function setChannel(n, silent) {
   if (S.mode === 'live') { say('Detené la grabación antes de cambiar de canal.'); return; }
   n = ((n - 1 + NCH) % NCH) + 1;
   if (n !== S.ch) S.prevCh = S.ch;
-  S.ch = n; S.guide = false; S.loopId++; S.order = []; S.how = false;
+  S.ch = n; S.guide = false; S.loopId++; S.order = []; S.how = n === 5 && (S.wantHow || !S.seenHow); if (n === 5) S.seenHow = true; S.wantHow = false;   // el panel de conectores se abre solo la primera vez
   if (S.air) S.air.cancel = true;
   if (!silent) { S.staticUntil = performance.now() + 380; blip(660, 0.12); }
   badge(); renderPages(); $('sheet').scrollTop = 0;
   if (n === 3) startLoop();
-  if (n === 5) loadRemote().then(() => { if (S.ch !== 5 || S.guide) return; if (!pool().length) { S.how = true; renderPages(); } else startLoop(); });
+  if (n === 5) loadRemote().then(() => { if (S.ch !== 5 || S.guide) return; if (!pool().length) { S.how = true; renderPages(); } startLoop(); });
 }
 function toggleGuide() { if (!S.on || guardBusy()) return; S.guide = !S.guide; blip(990, 0.06); renderPages(); }
 
@@ -439,6 +439,7 @@ function renderHow() {
   });
 }
 renderHow();
+$('btnCta').onclick = $('btnCtaStudio').onclick = () => { S.wantHow = true; setChannel(5); };   // atajo desde otros canales
 $('btnHow').onclick = () => { S.how = !S.how; renderPages(); };
 $('btnHowClose').onclick = () => { S.how = false; renderPages(); };
 $('btnCopy').onclick = async () => { try { await navigator.clipboard.writeText($('mcpUrl').value); say('Link copiado.'); } catch { $('mcpUrl').select(); say('Copialo con Ctrl+C.'); } };
