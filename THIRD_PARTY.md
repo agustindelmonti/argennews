@@ -7,5 +7,5 @@
 - Música: la música de ese repositorio (Kevin MacLeod, CC BY 4.0) NO está incluida. Si se agrega, hay que acreditarla como indica `app/assets/audio/README.md` de ese repositorio.
 
 ## Íconos de herramientas (botones «Cómo participar»)
-- Claude, OpenAI (ChatGPT), Google Gemini y Cursor: del paquete [Simple Icons](https://simpleicons.org/) 15.22.0, licencia CC0 1.0 (dominio público).
+- Claude, OpenAI (ChatGPT), Google Gemini, Cursor, X e Instagram: del paquete [Simple Icons](https://simpleicons.org/) 15.22.0, licencia CC0 1.0 (dominio público).
 - Los logotipos y nombres son marcas de sus respectivos titulares. Se muestran solo para indicar con qué herramientas es compatible el servidor MCP, sin sugerir afiliación ni respaldo. Si alguna marca pide retirarlos, se reemplazan por el ícono genérico (`link`).

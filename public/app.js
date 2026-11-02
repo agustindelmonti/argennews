@@ -12,7 +12,7 @@ const cv = $('screen'), g = cv.getContext('2d');
 const vid = $('vid'), vid2 = $('vid2'), live = $('preview');
 
 const S = {
-  on: true, ch: 3, prevCh: 0, wantHow: false, seenHow: false, deskBack: false, guide: false, filter: true, userNext: false, sinceMine: 0, order: [],
+  on: true, ch: 3, prevCh: 0, share: false, clip: null, wantHow: false, seenHow: false, deskBack: false, guide: false, filter: true, userNext: false, sinceMine: 0, order: [],
   vol: 0.6, muted: false,
   mode: 'idle',                // idle | live | air
   config: { demo: true, tts: false },
@@ -120,12 +120,19 @@ function speakFallback(text) {
 const PAGES = { 1: 'pCam', 2: 'pDesk', 4: 'pStudio', 6: 'pX' };
 function renderPages() {
   const show = (id, v) => { $(id).hidden = !v; };
-  ['pCam', 'pDesk', 'pStudio', 'pGuide', 'pAir', 'pX', 'pHow', 'pComBar'].forEach((id) => show(id, false));
+  ['pCam', 'pDesk', 'pStudio', 'pGuide', 'pAir', 'pX', 'pHow', 'pComBar', 'pShare'].forEach((id) => show(id, false));
   if (!S.on || S.guide || S.ch !== 6) stopX();
   if (!S.on) return;
   if (S.guide) { show('pGuide', true); focusFirst('pGuide'); return; }
   if (PAGES[S.ch]) { show(PAGES[S.ch], true); focusFirst(PAGES[S.ch]); }
-  if (S.ch === 3) { show('pAir', true); $('btnAgain').hidden = $('btnDl').hidden = !ready(); }   // siempre visible: tiene el acceso a conectar la IA
+  if (S.ch === 3) show('pAir', true);                // en el canal 3 siempre está: tiene el acceso a conectar la IA
+  if (S.ch === 5) show('pAir', ready());             // en la comunidad aparece cuando hay una noticia tuya para descargar o compartir
+  if (S.ch === 3 || S.ch === 5) {
+    const r = ready();
+    $('btnAgain').hidden = !r || S.ch !== 3; $('btnDl').hidden = !r; $('btnShare').hidden = !r; $('btnCta').hidden = S.ch !== 3;
+    $('pAir').classList.toggle('low', S.ch === 5);
+    if (S.share && r && !S.guide) { show('pShare', true); show('pAir', false); focusFirst('pShare'); }   // con el panel abierto, los botones de atrás se ocultan
+  }
   if (S.ch === 1) $('btnNext').hidden = !(S.clipDur > 0);
   if (S.ch === 2) refreshDesk();
   if (S.ch === 5) { show('pComBar', true); if (S.how) { show('pHow', true); focusFirst('pHow'); } }
@@ -143,7 +150,7 @@ function setChannel(n, silent) {
   if (S.mode === 'live') { say('Detené la grabación antes de cambiar de canal.'); return; }
   n = ((n - 1 + NCH) % NCH) + 1;
   if (n !== S.ch) S.prevCh = S.ch;
-  S.ch = n; S.guide = false; S.loopId++; S.order = []; S.how = n === 5 && (S.wantHow || !S.seenHow); if (n === 5) S.seenHow = true; S.wantHow = false;   // el panel de conectores se abre solo la primera vez
+  S.ch = n; S.guide = false; S.share = false; S.loopId++; S.order = []; S.how = n === 5 && (S.wantHow || !S.seenHow); if (n === 5) S.seenHow = true; S.wantHow = false;   // el panel de conectores se abre solo la primera vez
   if (S.air) S.air.cancel = true;
   if (!silent) { S.staticUntil = performance.now() + 380; blip(660, 0.12); }
   badge(); renderPages(); renderVote(); $('sheet').scrollTop = 0;
@@ -159,6 +166,7 @@ function power() {
   if (S.air) S.air.cancel = true;
   S.pwr = { type: S.on ? 'on' : 'off', at: performance.now() };
   ensureAudio(); crtSound(S.on);
+  S.share = false;
   if (S.on) { S.guide = false; S.ch = 3; S.staticUntil = performance.now() + 500; setTimeout(badge, 450); startLoop(); }
   else { vid.pause(); window.speechSynthesis && speechSynthesis.cancel(); ['chbadge', 'volbar', 'msg'].forEach((i) => ($(i).hidden = true)); }
   applyVolume(); renderPages();
@@ -181,6 +189,7 @@ addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   const map = { p: 'power', g: 'guide', m: 'mute', f: 'full', '+': 'volup', '=': 'volup', '-': 'voldn', arrowright: 'volup', arrowleft: 'voldn', arrowup: 'chup', arrowdown: 'chdn' };
   if (k === 'escape' && S.guide) { toggleGuide(); return; }
+  if (k === 'escape' && S.share) { S.share = false; renderPages(); return; }
   if ((k === 'escape' || k === 'backspace') && S.prevCh && S.on) { setChannel(S.prevCh); e.preventDefault(); return; }   // volver al canal anterior
   if (/^[1-6]$/.test(k)) { ensureAudioSoft(); setChannel(Number(k)); e.preventDefault(); return; }
   if (map[k]) { ensureAudioSoft(); ACT[map[k]](); e.preventDefault(); }
@@ -313,8 +322,10 @@ async function runAir(rec, seg) {
   ensureAudio();
   const mine = !!seg.mine;
   const st = mine ? story() : { ...seg, movil: seg.credito || seg.movil, ticker: (seg.ticker?.length ? seg.ticker : ['Pampa 7 Noticias, informando desde siempre']).join('   ◆   ') };
-  const a = { cancel: false, start: Infinity, intro: 0, total: 0, st, mine, seg, clipDur: mine ? S.clipDur : seg.kind === 'clima' ? 8 : 4, v2: false, clipStarted: false, done: null };
+  const a = { cancel: false, start: Infinity, intro: 0, total: 0, st, mine, seg, clipDur: mine ? S.clipDur : seg.kind === 'clima' ? 8 : 4, v2: false, clipStarted: false, done: null, key: mine ? clipKey() : null, recording: false };
   S.air = a; S.mode = 'air'; if (rec) S.busy = true; renderVote();
+  // rec === true: descarga; rec === 'render': solo prepara el clip. Si no: tu noticia se graba sola mientras la mirás, así «Compartir» ya la tiene lista.
+  const auto = !rec && mine && !clipFresh() && typeof MediaRecorder !== 'undefined', record = !!rec || auto;
   let buf = null;
   if (mine) { await prepareVoice(st.conductor); buf = S.ttsBuf; }
   else if (seg.video && await loadVid2(seg.video)) { a.v2 = true; a.clipDur = Math.min(vid2.duration || 8, 20); }
@@ -323,30 +334,31 @@ async function runAir(rec, seg) {
     a.intro = buf ? Math.max(4.5, buf.duration + 1) : Math.min(9, Math.max(4.5, words * 0.33 + 1.5));
     a.total = a.intro + a.clipDur + (mine ? 1.6 : 0.6);
     let recorder = null; const chunks = []; let mime = '';
-    if (rec) {
-      mime = pickMime();
-      const stream = cv.captureStream(30);
-      S.dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
-      recorder = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 4e6 });
-      recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-      recorder.start(250);
+    if (record) {
+      try {
+        mime = pickMime();
+        const stream = cv.captureStream(30);
+        S.dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
+        recorder = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 4e6 });
+        recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        recorder.start(250); a.recording = true;
+      } catch (e) { recorder = null; if (rec) throw e; }   // la grabación automática nunca rompe la emisión
     }
     const t0 = S.ac.currentTime + 0.1; sting(t0);
     let src = null;
     if (buf) { src = S.ac.createBufferSource(); src.buffer = buf; src.connect(S.mix); src.start(t0 + 0.8); }
     else if (!rec) speakFallback(st.conductor);
     a.start = performance.now() + 100;
-    if (rec) say('Grabando la emisión…', 2000);
+    if (rec) say(rec === 'render' ? 'Grabando tu clip…' : 'Grabando la emisión…', 2000);
     await new Promise((res) => { a.done = res; if (a.cancel) res(); });
     vid.pause(); vid2.pause(); src && src.stop(); window.speechSynthesis && speechSynthesis.cancel();
     if (recorder) {
       await new Promise((res) => { recorder.onstop = res; recorder.stop(); });
-      if (!a.cancel) {
+      if (!a.cancel && chunks.length) {
         const type = recorder.mimeType || mime || 'video/webm', ext = type.includes('mp4') ? 'mp4' : 'webm';
-        const el = document.createElement('a');
-        el.href = URL.createObjectURL(new Blob(chunks, { type })); el.download = `pampa7-noticia.${ext}`;
-        document.body.appendChild(el); el.click(); el.remove();
-        say(`Descargado como .${ext}. ¡Subilo a tus redes!`, 4500);
+        S.clip = { blob: new Blob(chunks, { type }), type, ext, key: a.key };
+        if (rec === true) downloadClip(S.clip);
+        if (S.share) renderShareIfOpen();
       }
     }
   }
@@ -380,11 +392,30 @@ async function loadRemote() {
   try { const r = await fetch('/api/programacion'); if (!r.ok) return; const d = await r.json(); S.remote = d.segments || []; X.list = d.embeds || []; } catch { /* sin servidor: solo la programación de relleno */ }
 }
 $('btnAgain').onclick = () => { S.userNext = true; if (S.air) S.air.cancel = true; };   // salta al siguiente y pone la tuya primero
+// Clip de tu noticia: se identifica por su contenido; si editás algo, deja de valer y se vuelve a grabar.
+function clipKey() { return JSON.stringify([story(), S.clipDur, vid.currentSrc || vid.src]); }
+function clipFresh() { return !!S.clip && S.clip.key === clipKey(); }
+function downloadClip(c, quiet) {
+  const el = document.createElement('a');
+  el.href = URL.createObjectURL(c.blob); el.download = `pampa7-noticia.${c.ext}`;
+  document.body.appendChild(el); el.click(); el.remove();
+  if (!quiet) say(`Descargado como .${c.ext}. ¡Subilo a tus redes!`, 4500);
+}
+async function prepareClip() {   // devuelve true si hay un clip vigente
+  if (clipFresh()) return true;
+  if (S.air && S.air.mine && S.air.recording) { await S.airPromise; if (clipFresh()) return true; }   // ya se está grabando mientras sale al aire
+  ++S.loopId; await stopAir(); S.staticUntil = 0;
+  await onAir('render', { mine: true });
+  const ok = clipFresh();
+  if (S.on && (S.ch === 3 || S.ch === 5)) startLoop();
+  return ok;
+}
 $('btnDl').onclick = async () => {
   if (!ready() || S.busy) return;
+  if (clipFresh()) { downloadClip(S.clip); return; }          // ya estaba grabado: descarga instantánea
   ++S.loopId; await stopAir(); S.staticUntil = 0;
   await onAir(true, { mine: true });
-  if (S.ch === 3 && S.on) startLoop();
+  if (S.on && (S.ch === 3 || S.ch === 5)) startLoop();
 };
 
 /* ---------------- Canal 5: cómo participar (instalar el MCP en cada asistente) ---------------- */
@@ -445,6 +476,58 @@ $('btnHow').onclick = () => { S.how = !S.how; renderPages(); };
 $('btnHowClose').onclick = () => { S.how = false; renderPages(); };
 $('btnCopy').onclick = async () => { try { await navigator.clipboard.writeText($('mcpUrl').value); say('Link copiado.'); } catch { $('mcpUrl').select(); say('Copialo con Ctrl+C.'); } };
 
+/* ---------------- Compartir tu noticia (X, Instagram, menú nativo) ---------------- */
+// Los navegadores solo dejan abrir el menú de compartir o una ventana justo después de un toque: por eso el clip se graba antes
+// (solo, la primera vez que tu noticia sale al aire) y acá el toque ya encuentra todo listo.
+TOOL_ICONS.x = "M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z";
+TOOL_ICONS.instagram = "M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077";
+[['shX', 'x'], ['shIg', 'instagram']].forEach(([id, name]) => $(id).prepend(toolIcon(name)));
+const SH_BTNS = ['shX', 'shIg', 'shCopy', 'shDl'];
+const shareText = () => { const st = story(); return `${st.titular}\n${st.bajada}\nMi noticia en Pampa 7 Noticias (humor, ficción). Hacé la tuya:`; };
+const shareFile = () => new File([S.clip.blob], `pampa7-noticia.${S.clip.ext}`, { type: S.clip.type });
+const canNativeShare = () => { try { return !!(S.clip && navigator.canShare && navigator.canShare({ files: [shareFile()] })); } catch { return false; } };
+const shareHelp = (t) => { $('shareHelp').textContent = t; };
+function shareState(msg, ok) { $('shareState').textContent = msg; SH_BTNS.forEach((id) => ($(id).disabled = !ok)); $('shNative').hidden = !ok || !canNativeShare(); }
+function renderShareIfOpen() {
+  if (!S.share) return;
+  shareState('Tu clip está listo. Elegí dónde compartirlo.', true);
+  shareHelp(S.clip.ext === 'webm' ? 'Tu navegador grabó en WebM. Si X o Instagram no lo aceptan, probá desde Chrome de escritorio o desde el celular.' : '');
+}
+let shareTimer = 0;
+async function openShare() {
+  if (!ready() || S.busy) return;
+  S.share = true; renderPages();
+  if (clipFresh()) { renderShareIfOpen(); return; }
+  shareState('Preparando tu clip…', false); shareHelp('Se graba la emisión en vivo: tarda lo que dura tu noticia.');
+  clearInterval(shareTimer);
+  shareTimer = setInterval(() => {   // cuenta regresiva mientras se graba
+    const a = S.air; if (a && a.start !== Infinity && a.total) shareState(`Grabando tu clip… faltan ${Math.max(0, Math.ceil((a.start + a.total * 1000 - performance.now()) / 1000))} s`, false);
+  }, 500);
+  const ok = await prepareClip(); clearInterval(shareTimer);
+  if (!S.share) return;
+  if (ok) renderShareIfOpen(); else { shareState('No pude grabar el clip en este navegador.', false); shareHelp('Probá desde Chrome o Safari actualizados.'); }
+}
+async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } }
+$('btnShare').onclick = openShare;
+$('shClose').onclick = () => { S.share = false; renderPages(); };
+$('shNative').onclick = async () => {
+  try { await navigator.share({ files: [shareFile()], text: `${shareText()} ${location.origin}`, title: 'Pampa 7 Noticias' }); }
+  catch (e) { if (e.name !== 'AbortError') say('Tu navegador no pudo abrir el menú de compartir. Probá con Descargar.', 4000); }
+};
+$('shX').onclick = () => {
+  downloadClip(S.clip, true);
+  window.open(`https://x.com/intent/post?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(location.origin)}`, '_blank', 'noopener');
+  shareHelp('Se descargó tu clip. X no permite subir un video desde un link: adjuntalo en el tuit.');
+};
+$('shIg').onclick = async () => {
+  if (canNativeShare()) { $('shNative').click(); return; }   // en el celular, el menú del sistema incluye Instagram
+  downloadClip(S.clip, true); const ok = await copyText(`${shareText()} ${location.origin}`);
+  window.open('https://www.instagram.com/', '_blank', 'noopener');
+  shareHelp(`Instagram no permite publicar desde un link. Descargamos tu clip${ok ? ' y copiamos el texto' : ''}: en Instagram tocá «+» → Reel y subí el archivo.`);
+};
+$('shCopy').onclick = async () => { const ok = await copyText(`${shareText()} ${location.origin}`); say(ok ? 'Texto copiado.' : 'No pude copiar: seleccionalo a mano.', 2200); };
+$('shDl').onclick = () => downloadClip(S.clip);
+
 /* ---------------- Canal 6: tweets elegidos (embeds oficiales de X) ---------------- */
 function loadWidgets() {
   if (X.widgets) return X.widgets;
@@ -486,7 +569,7 @@ addEventListener('resize', () => { if (S.ch === 6) fitX(); });
 
 /* ---------------- Celular en vertical: la pantalla muestra solo la imagen y los menús van en un panel debajo ---------------- */
 const mqPortrait = matchMedia('(max-aspect-ratio: 1/1)');
-const PANELS = ['pCam', 'pDesk', 'pAir', 'pX', 'pComBar', 'pHow', 'pStudio', 'pGuide'];
+const PANELS = ['pCam', 'pDesk', 'pAir', 'pX', 'pComBar', 'pHow', 'pShare', 'pStudio', 'pGuide'];
 function placePanels() {
   const target = mqPortrait.matches ? $('sheet') : $('osd');
   PANELS.forEach((id) => target.appendChild($(id)));
@@ -782,9 +865,11 @@ function frame(now) {
         if (!(a.seg.kind === 'clima' && !a.v2)) drawOverlay(el - a.intro, a.st);
       } else if (el < a.total) {
         drawStudio(el, a.st, null);
-        g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 190, W, 90); g.fillStyle = '#fff'; g.textAlign = 'center';
+        g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 190, W, a.mine ? 112 : 90); g.fillStyle = '#fff'; g.textAlign = 'center';
         g.font = '800 30px Impact, Arial'; g.fillText('VOLVEMOS ENSEGUIDA', W / 2, 245);
-        g.font = '600 14px Arial'; g.fillText('Pampa 7 Noticias · Informando desde siempre', W / 2, 268); g.textAlign = 'left';
+        g.font = '600 14px Arial'; g.fillText('Pampa 7 Noticias · Informando desde siempre', W / 2, 268);
+        if (a.mine && !/^(localhost|127\.)/.test(location.hostname)) { g.fillStyle = '#ffd400'; g.font = '700 14px Arial'; g.fillText('Hacé tu noticia en ' + location.host, W / 2, 292); }   // gancho para quien lo ve compartido
+        g.textAlign = 'left';
       } else { a.done && a.done(); a.done = null; }
     } else drawIdle(t);
     if (S.filter) filter(t);

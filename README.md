@@ -26,6 +26,7 @@ Tu noticia entra primero y vuelve a salir cada 4 segmentos. Teclas: `P` encender
 - **Instalar el MCP:** en el canal 5, «Cómo participar» tiene botones para Claude, ChatGPT, Gemini CLI, Cursor, Claude Code y otros. Copian el link o el comando y abren la página de cada herramienta. Necesitás una URL pública con https.
 
 - **Votos 👍 / 👎:** dos pulsadores en el mentón del televisor votan el clip que está al aire. Son anónimos (un id al azar guardado en el navegador), uno por clip y por navegador, y se pueden cambiar o retirar. El público no ve los totales: vos los ves en `/admin.html`, en «Ranking de clips». Tablas y funciones en `supabase/votes.sql`.
+- **Compartir y descargar tu noticia:** tu clip se graba solo la primera vez que sale al aire, así «Compartir» y «Descargar» lo encuentran listo. En el celular abre el menú del sistema (Instagram, WhatsApp y más). En escritorio, «Publicar en X» descarga el clip y abre el tuit con el texto (X no permite adjuntar un video desde un link) e «Instagram» descarga el clip, copia el texto y abre Instagram (no permite publicar desde un link). El clip termina con «Hacé tu noticia en <tu dominio>».
 - **Audiencia en línea:** display de 7 segmentos en el mentón; `/#audiencia` muestra una vista previa del diseño sin servidor.
 
 Celular: en vertical la TV ocupa el ancho y los menús pasan a un panel debajo; en apaisado quedan dentro de la pantalla.

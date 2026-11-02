@@ -162,3 +162,9 @@ textarea{resize:none}
 .vb.up.lit{color:#06210b;background:linear-gradient(#7dff8a,#3fd24f);box-shadow:0 3px 0 #0009,0 0 10px #5dff6a99}
 .vb.down.lit{color:#2a0505;background:linear-gradient(#ff8c82,#e0202b);box-shadow:0 3px 0 #0009,0 0 10px #ff4a3a99}
 .vb:focus-visible{outline:3px solid var(--yel);outline-offset:2px}
+
+/* Compartir */
+#pAir.low{top:27%}
+#pShare{z-index:3}
+#shareState{font-weight:700}
+@media (max-aspect-ratio:1/1){#sheet #pAir.low{top:auto}}

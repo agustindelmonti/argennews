@@ -60,6 +60,7 @@
           <div id="pAir" hidden>
             <button class="osd-btn" id="btnAgain">↻ Mi noticia</button>
             <button class="osd-btn danger" id="btnDl">⬇ Descargar mía</button>
+            <button class="osd-btn" id="btnShare">↗ Compartir</button>
             <button class="osd-btn" id="btnCta">Conectar mi IA</button>
           </div>
 
@@ -81,6 +82,20 @@
           </section>
 
           <div id="pComBar" hidden><button class="osd-btn danger" id="btnHow">Conectar mi IA</button></div>
+          <section class="page" id="pShare" hidden aria-label="Compartir tu noticia">
+            <h2>Compartir tu noticia</h2>
+            <p id="shareState">Preparando tu clip…</p>
+            <div class="row" id="shareBtns">
+              <button class="osd-btn danger" id="shNative" hidden>Compartir…</button>
+              <button class="osd-btn" id="shX" disabled>Publicar en X</button>
+              <button class="osd-btn" id="shIg" disabled>Instagram</button>
+              <button class="osd-btn" id="shCopy" disabled>Copiar texto</button>
+              <button class="osd-btn" id="shDl" disabled>Descargar</button>
+            </div>
+            <p class="note" id="shareHelp"></p>
+            <div class="row"><button class="osd-btn" id="shClose">Cerrar</button></div>
+          </section>
+
           <section class="page" id="pHow" hidden aria-label="Cómo mandar tu noticia">
             <h2>Mandá tu noticia desde tu IA</h2>
             <p>Conectá tu asistente y pedile <i>«Mandá a Pampa 7 una noticia sobre mi gato»</i>. La escribe con sus tokens y, si pasa la moderación, sale en los canales 5 y 3.</p>
