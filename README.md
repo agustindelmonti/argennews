@@ -19,6 +19,7 @@ Tu noticia entra primero y vuelve a salir cada 4 segmentos. Teclas: `P` encender
 ## Contenido que entra por afuera
 - **Canal 5 · Comunidad (MCP):** `POST /mcp` (Streamable HTTP, sin estado). El asistente de cada persona (ChatGPT, Claude, etc.) escribe la noticia con sus propios tokens usando `guia_de_estilo` y la envía con `crear_noticia`. Se valida (largos, sin links, filtro de temas), se limita por IP y queda pendiente hasta que la apruebes en `/admin.html` (o `AUTO_APPROVE=1` con moderación por IA).
 - **Canal 6 · Tweets:** elegís los tweets en el admin y se muestran con el embed oficial de X (el video queda en X).
+- **Canal 7 · Sin señal:** cartel fijo «Dificultades técnicas, por favor no cambie de canal» (`public/assets/dificultades-tecnicas.png`), para cuando hay un problema.
 - **Tendencias:** en el admin traés los temas del día (RSS de Google Trends, Argentina), la IA los convierte en situaciones ficticias saltando personas, política y temas sensibles, y queda pendiente de tu aprobación.
 - **Colaboraciones:** desde el admin cargás un segmento con crédito y, si querés, un link https a un video del que tengas permiso.
 

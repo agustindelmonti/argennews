@@ -5,8 +5,8 @@ import { SEGMENTS, CLIMA } from './seed.js';
 import { startClip } from './clip.js';
 const W = 640, H = 480;
 const MAX_CLIP = 12;
-const NCH = 6;
-const CH_NAMES = { 1: 'CÁMARA', 2: 'REDACCIÓN', 3: 'PAMPA 7', 4: 'ESTUDIO', 5: 'COMUNIDAD', 6: 'TWEETS' };
+const NCH = 7;
+const CH_NAMES = { 1: 'CÁMARA', 2: 'REDACCIÓN', 3: 'PAMPA 7', 4: 'ESTUDIO', 5: 'COMUNIDAD', 6: 'TWEETS', 7: 'SIN SEÑAL' };
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const cv = $('screen'), g = cv.getContext('2d');
@@ -247,7 +247,7 @@ addEventListener('keydown', (e) => {
   if (k === 'escape' && S.guide) { toggleGuide(); return; }
   if (k === 'escape' && S.share) { S.share = false; renderPages(); return; }
   if ((k === 'escape' || k === 'backspace') && S.prevCh && S.on) { setChannel(S.prevCh); e.preventDefault(); return; }   // volver al canal anterior
-  if (/^[1-6]$/.test(k)) { ensureAudioSoft(); setChannel(Number(k)); e.preventDefault(); return; }
+  if (/^[1-7]$/.test(k)) { ensureAudioSoft(); setChannel(Number(k)); e.preventDefault(); return; }
   if (map[k]) { ensureAudioSoft(); ACT[map[k]](); e.preventDefault(); }
 });
 
@@ -905,8 +905,15 @@ function drawSnow() {
   for (let i = 0; i < sd.data.length; i += 4) { const v = Math.random() * 255; sd.data[i] = sd.data[i + 1] = sd.data[i + 2] = v; sd.data[i + 3] = 255; }
   sx.putImageData(sd, 0, 0); g.imageSmoothingEnabled = false; g.drawImage(snow, 0, 0, W, H); g.imageSmoothingEnabled = true;
 }
+// Canal 7: cartel fijo «Dificultades técnicas». Es la pantalla para cuando algo falla (servidor, emisión) y el mismo cartel que se puede mostrar a propósito.
+const TECH = new Image(); TECH.src = 'assets/dificultades-tecnicas.png';
+function drawTech() {
+  if (TECH.complete && TECH.naturalWidth) g.drawImage(TECH, 0, 0, W, H);
+  else { g.fillStyle = '#3a1f6b'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '700 34px Arial'; g.fillText('DIFICULTADES TÉCNICAS', W / 2, H / 2 - 10); g.font = '700 22px Arial'; g.fillText('POR FAVOR, NO CAMBIE DE CANAL', W / 2, H / 2 + 28); g.textAlign = 'left'; }
+}
 function drawIdle(t) {
-  if (S.ch === 1) {
+  if (S.ch === 7) drawTech();
+  else if (S.ch === 1) {
     if (S.clipDur && vid.readyState >= 2 && vid.videoWidth) { cover(vid, vid.videoWidth, vid.videoHeight); g.fillStyle = 'rgba(0,0,40,.45)'; g.fillRect(0, 0, W, H); logo(W - 64, 20); }
     else drawBars(t, '');
   } else if (S.ch === 3) {
