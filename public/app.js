@@ -146,7 +146,7 @@ function setChannel(n, silent) {
   S.ch = n; S.guide = false; S.loopId++; S.order = []; S.how = n === 5 && (S.wantHow || !S.seenHow); if (n === 5) S.seenHow = true; S.wantHow = false;   // el panel de conectores se abre solo la primera vez
   if (S.air) S.air.cancel = true;
   if (!silent) { S.staticUntil = performance.now() + 380; blip(660, 0.12); }
-  badge(); renderPages(); $('sheet').scrollTop = 0;
+  badge(); renderPages(); renderVote(); $('sheet').scrollTop = 0;
   if (n === 3) startLoop();
   if (n === 5) loadRemote().then(() => { if (S.ch !== 5 || S.guide) return; if (!pool().length) { S.how = true; renderPages(); } startLoop(); });
 }
@@ -314,7 +314,7 @@ async function runAir(rec, seg) {
   const mine = !!seg.mine;
   const st = mine ? story() : { ...seg, movil: seg.credito || seg.movil, ticker: (seg.ticker?.length ? seg.ticker : ['Pampa 7 Noticias, informando desde siempre']).join('   ◆   ') };
   const a = { cancel: false, start: Infinity, intro: 0, total: 0, st, mine, seg, clipDur: mine ? S.clipDur : seg.kind === 'clima' ? 8 : 4, v2: false, clipStarted: false, done: null };
-  S.air = a; S.mode = 'air'; if (rec) S.busy = true;
+  S.air = a; S.mode = 'air'; if (rec) S.busy = true; renderVote();
   let buf = null;
   if (mine) { await prepareVoice(st.conductor); buf = S.ttsBuf; }
   else if (seg.video && await loadVid2(seg.video)) { a.v2 = true; a.clipDur = Math.min(vid2.duration || 8, 20); }
@@ -350,7 +350,7 @@ async function runAir(rec, seg) {
       }
     }
   }
-  S.air = null; S.busy = false; S.mode = 'idle';
+  S.air = null; S.busy = false; S.mode = 'idle'; renderVote();
   if (mine && vid.src && S.clipDur) await seek(0);
 }
 async function stopAir() { if (S.air) S.air.cancel = true; if (S.airPromise) await S.airPromise; }
@@ -505,18 +505,65 @@ const PID = (() => {
   try { let v = sessionStorage.getItem('p7pid'); if (!v) { v = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 20); sessionStorage.setItem('p7pid', v); } return v; }
   catch { return Math.random().toString(36).slice(2, 12) + Date.now().toString(36); }
 })();
+// Display de 7 segmentos (como el de una videocasetera): 3 dígitos, los apagados se ven como fantasma.
+const SEG_POLY = {
+  a: '2.2,0 7.8,0 8.8,1 7.8,2 2.2,2 1.2,1', g: '2.2,8 7.8,8 8.8,9 7.8,10 2.2,10 1.2,9', d: '2.2,16 7.8,16 8.8,17 7.8,18 2.2,18 1.2,17',
+  f: '1,1.2 2,2.2 2,7.8 1,8.8 0,7.8 0,2.2', b: '9,1.2 10,2.2 10,7.8 9,8.8 8,7.8 8,2.2',
+  e: '1,9.2 2,10.2 2,15.8 1,16.8 0,15.8 0,10.2', c: '9,9.2 10,10.2 10,15.8 9,16.8 8,15.8 8,10.2',
+};
+const SEG_ON = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg' };
+function renderSeg(n) {
+  const txt = String(Math.min(999, Math.max(0, n))).padStart(3, ' ');
+  const NS = 'http://www.w3.org/2000/svg', svg = $('seg'); svg.textContent = '';
+  [...txt].forEach((ch, i) => {
+    const g2 = document.createElementNS(NS, 'g'); g2.setAttribute('transform', `translate(${i * 15} 0) skewX(-7)`);
+    for (const k of 'abcdefg') {
+      const poly = document.createElementNS(NS, 'polygon'); poly.setAttribute('points', SEG_POLY[k]);
+      poly.setAttribute('class', ch !== ' ' && SEG_ON[ch].includes(k) ? 'on' : 'off'); g2.appendChild(poly);
+    }
+    svg.appendChild(g2);
+  });
+}
+function showAudience(online) {
+  const el = $('presence');
+  if (!(Number.isInteger(online) && online > 0)) { el.hidden = true; return; }
+  const changed = el.hidden || el.dataset.n !== String(online); el.hidden = false; el.dataset.n = online; renderSeg(online);
+  const txt = `${online} ${online === 1 ? 'espectador' : 'espectadores'} ahora`; el.setAttribute('aria-label', txt); el.title = txt;
+  if (changed) { el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick'); }   // parpadeo breve al cambiar el número
+}
 async function pingPresence() {
   if (document.hidden) return;
+  if (location.hash === '#audiencia') { showAudience(12); return; }   // vista previa del diseño sin servidor
   try {
     const r = await fetch('/api/presence', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: PID }) });
     if (!r.ok) return;
-    const { online } = await r.json(), el = $('presence');
-    if (Number.isInteger(online) && online > 0) { el.hidden = false; $('presenceN').textContent = online; el.setAttribute('aria-label', `${online} ${online === 1 ? 'persona viendo' : 'personas viendo'} ahora`); el.title = el.getAttribute('aria-label'); }
-    else el.hidden = true;
+    showAudience((await r.json()).online);
   } catch { /* sin servidor: no se muestra */ }
 }
 pingPresence(); setInterval(pingPresence, 45000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) pingPresence(); });
+
+/* ---------------- Votos 👍 / 👎 sobre el clip que está al aire (anónimos, uno por clip y por navegador) ---------------- */
+const VID = (() => {
+  try { let v = localStorage.getItem('p7vid'); if (!v) { v = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 20); localStorage.setItem('p7vid', v); } return v; }
+  catch { return PID; }
+})();
+const MY_VOTES = (() => { try { return JSON.parse(localStorage.getItem('p7votes') || '{}'); } catch { return {}; } })();
+const saveVotes = () => { try { localStorage.setItem('p7votes', JSON.stringify(MY_VOTES)); } catch { /* sin almacenamiento */ } };
+const votableId = () => (S.on && S.mode === 'air' && S.air && !S.air.cancel && !S.air.mine && S.air.seg?.id ? S.air.seg.id : null);
+function renderVote() {
+  const id = votableId(), mine = id ? MY_VOTES[id] || 0 : 0;
+  [['btnUp', 1], ['btnDown', -1]].forEach(([b, v]) => { const el = $(b); el.disabled = !id; el.setAttribute('aria-pressed', String(mine === v)); el.classList.toggle('lit', mine === v); });
+}
+async function castVote(v) {
+  const id = votableId(); if (!id) return;
+  const next = (MY_VOTES[id] || 0) === v ? 0 : v;          // tocar de nuevo el mismo botón retira el voto
+  if (next === 0) delete MY_VOTES[id]; else MY_VOTES[id] = next;
+  saveVotes(); renderVote(); blip(next === 1 ? 990 : 330, 0.08);
+  say(next === 0 ? 'Voto retirado.' : next === 1 ? '¡Gracias! Te gustó.' : 'Anotado: no te gustó.', 1400);
+  try { await fetch('/api/vote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ seg: id, voter: VID, v: next }) }); } catch { /* sin servidor: queda solo en tu navegador */ }
+}
+$('btnUp').onclick = () => castVote(1); $('btnDown').onclick = () => castVote(-1);
 
 /* ---------------- Dibujo ---------------- */
 const scan = document.createElement('canvas'); scan.width = 4; scan.height = 3;

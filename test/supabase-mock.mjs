@@ -4,7 +4,7 @@
 import http from 'node:http';
 import assert from 'node:assert/strict';
 
-const presence = new Set(); const KEY = 'service-key-de-prueba', tables = { segments: [], embeds: [] }, rate = new Map(), log = [];
+const presence = new Set(), votes = new Map(); const KEY = 'service-key-de-prueba', tables = { segments: [], embeds: [] }, rate = new Map(), log = [];
 const readJson = (req) => new Promise((r) => { let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => r(b ? JSON.parse(b) : undefined)); });
 const mock = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://m'), body = await readJson(req), p = u.pathname.replace('/rest/v1/', '');
@@ -12,6 +12,8 @@ const mock = http.createServer(async (req, res) => {
   const send = (s, d) => { res.writeHead(s, { 'content-type': 'application/json' }); res.end(d === undefined ? '' : JSON.stringify(d)); };
   if (req.headers.apikey !== KEY || req.headers.authorization !== `Bearer ${KEY}`) return send(401, { message: 'bad key' });
   const eqf = (rows) => rows.filter((r) => [...u.searchParams].every(([k, v]) => !v.startsWith('eq.') || String(r[k]) === v.slice(3)));
+  if (p === 'rpc/vote_cast') { const k = body.p_seg + '|' + body.p_voter; if (body.p_v === 0) votes.delete(k); else votes.set(k, body.p_v); return send(204); }
+  if (p === 'rpc/vote_totals') { const t = {}; for (const [k, v] of votes) { const s = k.split('|')[0]; (t[s] ??= { seg_id: s, up: 0, down: 0 })[v === 1 ? 'up' : 'down']++; } return send(200, Object.values(t)); }
   if (p === 'rpc/presence_ping') { presence.add(body.p_id); return send(200, presence.size); }
   if (p === 'rpc/bump_limit') { const n = (rate.get(body.p_key) || 0) + 1; rate.set(body.p_key, n); return send(200, n <= body.p_lim); }
   const t = tables[p]; if (!t) return send(404, { message: 'no table' });
@@ -55,6 +57,9 @@ try {
   r = await call(`/api/admin?p=segments/${row.id}/delete`, {}, 'secreto'); assert.equal(tables.segments.some((s) => s.id === row.id), false); ok('baja de segmento');
   r = await call('/api/presence', { id: 'pestana0001' }); assert.equal(r.json.online, 1); r = await call('/api/presence', { id: 'pestana0002' }); assert.equal(r.json.online, 2);
   assert.ok(log.some((l) => l.startsWith('POST rpc/presence_ping'))); ok('gente en línea vía RPC presence_ping de Supabase (y número real aun en modo Vercel)');
+  await call('/api/vote', { seg: 'seed-clip-uno', voter: 'votante0001', v: 1 }); await call('/api/vote', { seg: 'seed-clip-uno', voter: 'votante0002', v: -1 });
+  r = await call('/api/admin?p=state', null, 'secreto'); const vt = r.json.votes.find((x) => x.seg_id === 'seed-clip-uno'); assert.deepEqual([vt.up, vt.down], [1, 1]);
+  assert.ok(log.some((l) => l.startsWith('POST rpc/vote_cast'))); ok('votos vía RPC vote_cast / vote_totals de Supabase (aun en modo Vercel)');
   r = await call('/api/no-existe'); assert.equal(r.status, 404); ok('ruta desconocida = 404 JSON');
   console.log(`\n${n} verificaciones ok`);
 } catch (e) { console.error('FALLÓ:', e.stack || e.message); process.exitCode = 1; } finally { mock.close(); app.close(); setTimeout(() => process.exit(process.exitCode || 0), 100); }

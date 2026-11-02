@@ -49,5 +49,14 @@ try {
   r = await call('/api/presence', { id: 'pestana0002' }); assert.equal(r.json.online, 2);
   r = await call('/api/presence', { id: 'pestana0002' }); assert.equal(r.json.online, 2);
   r = await call('/api/presence', { id: 'x' }); assert.equal(r.status, 400); ok('gente en línea: cuenta ids distintos, no duplica y rechaza ids inválidos');
+  const V = (body) => call('/api/vote', body);
+  r = await V({ seg: 'seed-clip-uno', voter: 'votante0001', v: 1 }); assert.equal(r.status, 200); assert.equal(r.json.stored, true);
+  await V({ seg: 'seed-clip-uno', voter: 'votante0002', v: 1 }); await V({ seg: 'seed-clip-uno', voter: 'votante0003', v: -1 });
+  await V({ seg: 'seed-clip-uno', voter: 'votante0003', v: 1 });   // cambia de opinión: no suma un voto más
+  await V({ seg: 'seed-clip-dos', voter: 'votante0001', v: -1 }); await V({ seg: 'seed-clip-dos', voter: 'votante0001', v: 0 });   // retira el voto
+  r = await call('/admin/api/state', null, 'secreto'); const tot = Object.fromEntries(r.json.votes.map((x) => [x.seg_id, x]));
+  assert.deepEqual([tot['seed-clip-uno'].up, tot['seed-clip-uno'].down], [3, 0]); assert.deepEqual([tot['seed-clip-dos'].up, tot['seed-clip-dos'].down], [0, 0]);
+  r = await V({ seg: 'a b', voter: 'votante0001', v: 1 }); assert.equal(r.status, 400); r = await V({ seg: 'seed-clip-uno', voter: 'votante0001', v: 5 }); assert.equal(r.status, 400); r = await V({ seg: 'seed-clip-uno', voter: 'x', v: 1 }); assert.equal(r.status, 400);
+  ok('votos: uno por votante y clip, se puede cambiar o retirar, valida entradas y el admin ve los totales');
   console.log(`\n${n} verificaciones ok`);
 } catch (e) { console.error('FALLÓ:', e.message); process.exitCode = 1; } finally { srv.kill(); rmSync(DIR, { recursive: true, force: true }); }

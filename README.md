@@ -25,6 +25,9 @@ Tu noticia entra primero y vuelve a salir cada 4 segmentos. Teclas: `P` encender
 - **Canal del clima:** sketches con la tipografía y los íconos de Star4000, repintados con la paleta del noticiero. `/#clima` muestra solo esos segmentos.
 - **Instalar el MCP:** en el canal 5, «Cómo participar» tiene botones para Claude, ChatGPT, Gemini CLI, Cursor, Claude Code y otros. Copian el link o el comando y abren la página de cada herramienta. Necesitás una URL pública con https.
 
+- **Votos 👍 / 👎:** dos pulsadores en el mentón del televisor votan el clip que está al aire. Son anónimos (un id al azar guardado en el navegador), uno por clip y por navegador, y se pueden cambiar o retirar. El público no ve los totales: vos los ves en `/admin.html`, en «Ranking de clips». Tablas y funciones en `supabase/votes.sql`.
+- **Audiencia en línea:** display de 7 segmentos en el mentón; `/#audiencia` muestra una vista previa del diseño sin servidor.
+
 Celular: en vertical la TV ocupa el ancho y los menús pasan a un panel debajo; en apaisado quedan dentro de la pantalla.
 
 Pruebas: `npm test` (servidor local y modo Vercel + Supabase simulado). Créditos de terceros: `THIRD_PARTY.md`.

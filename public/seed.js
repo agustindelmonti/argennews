@@ -83,3 +83,7 @@ export const CLIMA = [
       pares: [['Mareas:', 'Las de siempre'], ['Perros:', 'Ladrando por las dudas'], ['Poetas:', 'Insoportables'], ['Gatos:', 'En los techos'], ['Sueño:', 'No hay']],
       alerta: 'AVISO: LA LUNA NO ES UNA LAMPARITA, NO LA APAGUE' } },
 ];
+
+// Id estable por segmento (derivado del titular) para poder contar votos aunque se reordene la programación.
+const slug = (t) => 'seed-' + t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+[...SEGMENTS, ...CLIMA].forEach((x) => { x.id ??= slug(x.titular); });

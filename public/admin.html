@@ -21,6 +21,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mut);margin-right:4px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid .w{grid-column:1/-1}
 label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--mut)}input,textarea{width:100%}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:600}td.n,th:nth-child(n+3){text-align:right;font-variant-numeric:tabular-nums}.pos{color:var(--ok)}.neg{color:#ff8a92}.zero{color:var(--mut)}
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#000d;border:1px solid #fff6;padding:8px 14px;border-radius:8px}
 @media(max-width:560px){.grid{grid-template-columns:1fr}}
 </style>
@@ -33,6 +34,10 @@ label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--mut)
 
   <div id="app" hidden>
     <section id="storageWarn" hidden style="border-color:var(--red)"><h2 style="color:#ff8a92">Almacenamiento temporal</h2><p class="meta" style="margin:0">Estás en Vercel guardando en un archivo temporal: las noticias, los tweets y los límites se pierden. Configurá <b>SUPABASE_URL</b> y <b>SUPABASE_SERVICE_KEY</b> (ver README) y volvé a desplegar.</p></section>
+    <section><h2>Ranking de clips (votos 👍 / 👎)</h2>
+      <p class="meta">Los votos son anónimos y uno por clip y navegador. El público no ve estos números.</p>
+      <div style="overflow-x:auto"><table id="rank"><thead><tr><th>Clip</th><th>Origen</th><th>👍</th><th>👎</th><th>Saldo</th></tr></thead><tbody></tbody></table></div></section>
+
     <section><h2>Pendientes de aprobación</h2><div id="pending"></div></section>
 
     <section><h2>Tweets del canal 6 (embeds oficiales)</h2>
@@ -79,8 +84,18 @@ function card(s, actions) {
     <div class="meta"><span class="tag">${esc(s.source)}</span><span class="tag">${esc(s.etiqueta)}</span>${s.autor ? `<span class="tag">${esc(s.autor)}</span>` : ''}${s.tema ? `<span class="tag">tema: ${esc(s.tema)}</span>` : ''}${s.video ? '<span class="tag">video</span>' : ''}</div>
     <div>${esc(s.bajada)}</div><div class="meta">${esc(s.conductor)}</div><div class="row">${actions}</div></div>`;
 }
+async function renderRank(st) {
+  const rows = new Map();
+  try { const m = await import('/seed.js'); for (const x of [...m.SEGMENTS, ...m.CLIMA]) rows.set(x.id, { titular: x.titular, origen: m.CLIMA.includes(x) ? 'clima' : 'relleno' }); } catch { /* sin seed.js */ }
+  for (const s of st.segments) if (s.status === 'approved') rows.set(s.id, { titular: s.titular, origen: s.source });
+  const tot = new Map((st.votes || []).map((v) => [v.seg_id, v]));
+  const list = [...rows].map(([id, r]) => { const v = tot.get(id) || { up: 0, down: 0 }; return { ...r, up: v.up, down: v.down, saldo: v.up - v.down }; })
+    .sort((a, b) => b.saldo - a.saldo || b.up - a.up || a.titular.localeCompare(b.titular));
+  $('rank').tBodies[0].innerHTML = list.map((r) => `<tr><td>${esc(r.titular)}</td><td>${esc(r.origen)}</td><td class="n">${r.up}</td><td class="n">${r.down}</td><td class="n ${r.saldo > 0 ? 'pos' : r.saldo < 0 ? 'neg' : 'zero'}">${r.saldo > 0 ? '+' : ''}${r.saldo}</td></tr>`).join('') || '<tr><td colspan="5" class="zero">Todavía no hay clips.</td></tr>';
+}
 async function load() {
   const st = await api('/state');
+  renderRank(st);
   $('login').hidden = true; $('app').hidden = false; $('storageWarn').hidden = !st.ephemeral;
   const pend = st.segments.filter((s) => s.status === 'pending'), appr = st.segments.filter((s) => s.status === 'approved').slice(0, 20);
   $('pending').innerHTML = pend.length ? pend.map((s) => card(s, `<button class="g" data-a="approve" data-id="${s.id}">Aprobar</button><button class="d" data-a="reject" data-id="${s.id}">Rechazar</button>`)).join('') : '<p class="meta">No hay nada pendiente.</p>';
