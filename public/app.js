@@ -412,6 +412,11 @@ async function runAir(rec, seg) {
         const c = { ...clip, key: a.key };
         if (mine) S.clip = c;
         if (rec === true || rec === 'dl') downloadClip(c, rec === 'dl');
+        if (rec === 'dl') {
+          const msg = { aac: 'con sonido', opus: 'con sonido (Opus)', mediarecorder: 'con sonido', silencio: 'SIN sonido: la mezcla de audio estaba muda. Subí el volumen y probá de nuevo', ninguno: 'SIN sonido: este navegador no pudo codificar el audio' }[c.audio] || '';
+          say(`Descargado .${c.ext} ${msg}`.trim() + (/SIN/.test(msg) ? '' : '. ¡Subilo a tus redes!'), 6000);
+          console.info('Clip:', { ext: c.ext, audio: c.audio, nivel: c.peak, ctx: S.ac && S.ac.state, vol: S.vol, mute: S.muted });
+        }
         if (S.share) renderShareIfOpen();
       } else if (rec === 'dl' && !a.cancel) say('No se pudo armar el clip. Probá de nuevo.', 3500);
     }

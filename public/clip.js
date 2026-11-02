@@ -28,15 +28,6 @@ async function videoConfig() {
   }
   return null;
 }
-async function audioConfig(sampleRate) {
-  if (typeof AudioEncoder === 'undefined') return null;
-  for (const [codec, mux] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) {
-    const cfg = { codec, sampleRate, numberOfChannels: 2, bitrate: 128000 };
-    try { const r = await AudioEncoder.isConfigSupported(cfg); if (r.supported) return { cfg, mux }; } catch { /* siguiente */ }
-  }
-  return null;
-}
-
 // screen: canvas de la pantalla (640×480). ac/mix: contexto y nodo de la mezcla de audio. dest: MediaStreamDestination (solo para el camino de reserva).
 export async function startClip({ screen, ac, mix, dest, onFrame, audioStream }) {
   await frameReady;
@@ -51,31 +42,54 @@ export async function startClip({ screen, ac, mix, dest, onFrame, audioStream })
   return vc ? startWebCodecs({ out, compose, ac, mix, vc, onFrame, audioStream }) : startFallback({ out, compose, dest, onFrame, audioStream });
 }
 
+// Ayuda: codifica el audio ya grabado (PCM) con un códec y lo decodifica para comprobar que suena. Devuelve {chunks, peak} o null.
+async function encodeAudio(pcm, sampleRate, codec) {
+  const cfg = { codec, sampleRate, numberOfChannels: 2, bitrate: 128000 };
+  try { if (!(await AudioEncoder.isConfigSupported(cfg)).supported) return null; } catch { return null; }
+  const chunks = []; let err = null;
+  const enc = new AudioEncoder({ output: (c, m) => chunks.push({ c, m }), error: (e) => { err = e; } });
+  try {
+    enc.configure(cfg);
+    let at = 0;
+    for (const blk of pcm) {   // blk: Float32Array planar [canal 0 | canal 1]
+      const n = blk.length / 2;
+      enc.encode(new AudioData({ format: 'f32-planar', sampleRate, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round((at / sampleRate) * 1e6), data: blk }));
+      at += n;
+    }
+    await enc.flush(); enc.close();
+  } catch (e) { err = err || e; }
+  if (err || !chunks.length) return null;
+  // Verificación: se decodifica lo codificado y se mide el nivel. Un MP4 con la pista de audio rota se ve «sin sonido» en el reproductor.
+  let peak = null;
+  try {
+    const dc = chunks.find((x) => x.m && x.m.decoderConfig)?.m.decoderConfig;
+    if (dc && typeof AudioDecoder !== 'undefined' && (await AudioDecoder.isConfigSupported(dc)).supported) {
+      peak = 0;
+      const dec = new AudioDecoder({ output: (d) => { const f = new Float32Array(d.numberOfFrames); d.copyTo(f, { planeIndex: 0, format: 'f32-planar' }); for (let i = 0; i < f.length; i++) { const v = Math.abs(f[i]); if (v > peak) peak = v; } d.close(); }, error: () => { peak = null; } });
+      dec.configure(dc);
+      for (const x of chunks) dec.decode(x.c);
+      await dec.flush(); dec.close();
+    }
+  } catch { peak = null; }
+  return { chunks, peak, cfg };
+}
+
 async function startWebCodecs({ out, compose, ac, mix, vc, onFrame, audioStream }) {
-  const ac_ = await audioConfig(ac.sampleRate);
-  const target = new ArrayBufferTarget();
-  const muxer = new Muxer({
-    target, fastStart: 'in-memory', firstTimestampBehavior: 'offset',
-    video: { codec: vc.mux, width: W, height: H },   // sin frameRate: con él el muxer redondea las marcas de tiempo a la grilla de 30 cuadros y quedan repetidas
-    ...(ac_ ? { audio: { codec: ac_.mux, sampleRate: ac.sampleRate, numberOfChannels: 2 } } : {}),
-  });
-  let failed = null;
-  const venc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: (e) => { failed = e; } });
+  // El video se codifica en vivo; el audio se guarda crudo (PCM) y se codifica al final, así se puede verificar y, si un códec falla, probar otro.
+  const vchunks = []; let failed = null;
+  const venc = new VideoEncoder({ output: (c, m) => vchunks.push({ c, m }), error: (e) => { failed = e; } });
   venc.configure(vc.cfg);
-  let aenc = null, proc = null, mute = null, tap = mix;
-  if (ac_) {
-    aenc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (e) => { failed = e; } });
-    aenc.configure(ac_.cfg);
+  const pcm = []; let proc = null, mute = null, tap = mix, written = 0, inPeak = 0;
+  if (typeof AudioEncoder !== 'undefined') {
     proc = ac.createScriptProcessor(4096, 2, 2);
     mute = ac.createGain(); mute.gain.value = 0;
-    let written = 0;
     proc.onaudioprocess = (ev) => {
       const n = ev.inputBuffer.length, data = new Float32Array(n * 2);
       data.set(ev.inputBuffer.getChannelData(0), 0); data.set(ev.inputBuffer.getChannelData(ev.inputBuffer.numberOfChannels > 1 ? 1 : 0), n);
-      try { aenc.encode(new AudioData({ format: 'f32-planar', sampleRate: ac.sampleRate, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round((written / ac.sampleRate) * 1e6), data })); } catch (e) { failed = e; }
-      written += n;
+      for (let i = 0; i < n; i += 8) { const v = Math.abs(data[i]); if (v > inPeak) inPeak = v; }
+      pcm.push(data); written += n;
     };
-    if (audioStream && audioStream.getAudioTracks().length) tap = ac.createMediaStreamSource(audioStream);   // audio de la pestaña: solo va al grabador, nunca a los parlantes
+    if (audioStream && audioStream.getAudioTracks().length) tap = ac.createMediaStreamSource(audioStream);
     tap.connect(proc); proc.connect(mute); mute.connect(ac.destination);
   }
   const t0 = performance.now(); let next = 0, frames = 0, stopped = false;
@@ -100,12 +114,30 @@ async function startWebCodecs({ out, compose, ac, mix, vc, onFrame, audioStream 
     async stop(discard) {
       stopped = true; onFrame.current = null;
       if (proc) { try { tap.disconnect(proc); proc.disconnect(); mute.disconnect(); } catch { /* ya desconectado */ } proc.onaudioprocess = null; }
-      try { await venc.flush(); if (aenc) await aenc.flush(); } catch (e) { failed = failed || e; }
-      try { venc.close(); aenc && aenc.close(); } catch { /* ya cerrado */ }
+      try { await venc.flush(); } catch (e) { failed = failed || e; }
+      try { venc.close(); } catch { /* ya cerrado */ }
       if (discard) return null;
       if (failed || !frames) throw failed || new Error('sin cuadros');
+      // Audio: AAC primero (lo aceptan X, Instagram y todos los reproductores); si no se puede codificar o no se escucha al decodificarlo, Opus.
+      let audio = null, how = 'ninguno';
+      if (pcm.length && inPeak < 1e-4) how = 'silencio';          // la mezcla de la app estaba muda: no es un problema de códec
+      else if (pcm.length) {
+        for (const [codec, mux] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) {
+          const r = await encodeAudio(pcm, ac.sampleRate, codec);
+          if (r && (r.peak === null || r.peak > 1e-4)) { audio = { ...r, mux }; how = mux; break; }
+          console.warn('Audio', codec, r ? 'se decodifica en silencio' : 'no se pudo codificar');
+        }
+      }
+      const muxer = new Muxer({
+        target: new ArrayBufferTarget(), fastStart: 'in-memory', firstTimestampBehavior: 'offset',
+        video: { codec: vc.mux, width: W, height: H },   // sin frameRate: con él el muxer redondea las marcas de tiempo a la grilla de 30 cuadros y quedan repetidas
+        ...(audio ? { audio: { codec: audio.mux, sampleRate: ac.sampleRate, numberOfChannels: 2 } } : {}),
+      });
+      // Se intercalan video y audio por marca de tiempo (como un archivo normal).
+      const all = vchunks.map((x) => ({ ...x, v: true })).concat(audio ? audio.chunks.map((x) => ({ ...x, v: false })) : []).sort((a, b) => a.c.timestamp - b.c.timestamp);
+      for (const x of all) { if (x.v) muxer.addVideoChunk(x.c, x.m); else muxer.addAudioChunk(x.c, x.m); }
       muxer.finalize();
-      return { blob: new Blob([target.buffer], { type: 'video/mp4' }), type: 'video/mp4', ext: 'mp4' };
+      return { blob: new Blob([muxer.target.buffer], { type: 'video/mp4' }), type: 'video/mp4', ext: 'mp4', audio: how, peak: Math.round(inPeak * 100) / 100 };
     },
   };
 }
@@ -126,7 +158,7 @@ function startFallback({ out, compose, dest, onFrame, audioStream }) {
       await new Promise((res) => { rec.onstop = res; rec.stop(); });
       if (discard || !chunks.length) return null;
       const type = rec.mimeType || mime || 'video/webm';
-      return { blob: new Blob(chunks, { type }), type, ext: type.includes('mp4') ? 'mp4' : 'webm' };
+      return { blob: new Blob(chunks, { type }), type, ext: type.includes('mp4') ? 'mp4' : 'webm', audio: 'mediarecorder' };
     },
   };
 }
