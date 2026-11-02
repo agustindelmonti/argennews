@@ -390,7 +390,13 @@ async function runAir(rec, seg) {
   }
   if (!a.cancel) {
     const words = st.conductor.split(/\s+/).length;
-    a.intro = buf ? Math.max(4.5, buf.duration + 1) : Math.min(9, Math.max(4.5, words * 0.33 + 1.5));
+    if (!mine && !a.v2) {
+      // Sin video propio: el conductor aparece solo al principio y después la escena pasa a las imágenes (emojis o clima) mientras sigue hablando,
+      // así no hay que esperar a que termine todo el texto para ver algo.
+      a.voiceDur = buf ? buf.duration : Math.min(16, words * 0.33 + 0.6);
+      a.intro = Math.max(4.5, 0.8 + a.voiceDur * 0.4);
+      a.clipDur = Math.max(a.clipDur, 0.8 + a.voiceDur + 0.5 - a.intro);
+    } else a.intro = buf ? Math.max(4.5, buf.duration + 1) : Math.min(9, Math.max(4.5, words * 0.33 + 1.5));
     a.total = a.intro + a.clipDur + (mine ? 1.6 : 0.6);
     let recorder = null;
     if (record) {
@@ -799,7 +805,7 @@ function drawStudio(t, st, a) {
   g.fillStyle = '#e0202b'; g.fillRect(24, 82, 150, 24); g.fillStyle = '#fff'; g.font = '800 14px Arial'; g.fillText('● EN VIVO', 34, 99);
   if (a && st.movil) { g.fillStyle = 'rgba(0,0,0,.65)'; g.font = '600 13px Arial'; g.fillRect(24, 108, g.measureText(st.movil).width + 16, 22); g.fillStyle = '#fff'; g.fillText(st.movil, 32, 124); }
   if (a) {
-    const full = st.conductor, shown = full.slice(0, Math.max(0, Math.floor(((t - 0.8) / Math.max(1, a.intro - 1.8)) * full.length)));
+    const full = st.conductor, shown = full.slice(0, Math.max(0, Math.floor(((t - 0.8) / Math.max(1, a.voiceDur || a.intro - 1.8)) * full.length)));   // el texto avanza al ritmo de la voz
     g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(24, 136, 330, 180); g.fillStyle = '#fff';
     wrap(shown, 300, '600 17px Arial').slice(0, 7).forEach((l, i) => g.fillText(l, 40, 164 + i * 22));
   }
@@ -811,6 +817,18 @@ function drawOverlay(t, st) {
   drawLower(t, st);
 }
 // Banner inferior de la noticia: etiqueta, titular, bajada y ticker con reloj. Entra deslizando.
+// Subtítulo del conductor sobre las imágenes: la frase que se está diciendo en este momento (por proporción del tiempo de voz).
+function drawCaption(el, a) {
+  const full = a.st.conductor, p = Math.min(0.999, Math.max(0, (el - 0.8) / a.voiceDur)) * full.length;
+  const parts = []; for (const sen of full.split(/(?<=[.!?:])\s+/)) for (const c of (sen.length > 120 ? sen.split(/(?<=,)\s+/) : [sen])) parts.push(c);
+  let acc = 0, cur = parts[parts.length - 1];
+  for (const c of parts) { acc += c.length + 1; if (p < acc) { cur = c; break; } }
+  const lines = wrap(cur, W - 90, '700 18px Arial').slice(0, 2), h = lines.length * 24 + 12, y = 322 - h;
+  g.fillStyle = 'rgba(0,0,0,.62)'; g.fillRect(24, y, W - 48, h);
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = '700 18px Arial';
+  lines.forEach((l, i) => g.fillText(l, W / 2, y + 24 + i * 24));
+  g.textAlign = 'left';
+}
 function drawLower(t, st) {
   const k = Math.min(1, t / 0.5), dx = -(W * (1 - k * (2 - k)));   // ease-out
   g.save(); g.translate(dx, 0);
@@ -960,7 +978,7 @@ function drawFrame(now) {
           if (vid2.videoWidth) cover(vid2, vid2.videoWidth, vid2.videoHeight);
         } else if (a.seg.kind === 'clima') drawClima(el - a.intro, a.seg);
         else drawBroll(el - a.intro, a.seg);
-        if (!(a.seg.kind === 'clima' && !a.v2)) drawOverlay(el - a.intro, a.st);
+        if (!(a.seg.kind === 'clima' && !a.v2)) { drawOverlay(el - a.intro, a.st); if (a.voiceDur && el < 0.8 + a.voiceDur + 0.3) drawCaption(el, a); }
       } else if (el < a.total) {
         drawStudio(el, a.st, null);
         g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 190, W, a.mine ? 112 : 90); g.fillStyle = '#fff'; g.textAlign = 'center';
