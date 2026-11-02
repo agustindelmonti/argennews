@@ -1,4 +1,4 @@
-// Programación de relleno de Pampa 7: segmentos originales y ficticios (sin personas, marcas ni hechos reales).
+// Programación de relleno de Pampa 7: segmentos originales y ficticios (ficticia; las pocas personas públicas que aparecen están anotadas en docs/HUMOR.md).
 // Cada segmento: etiqueta, titular, bajada, movil, conductor (texto que lee el conductor), ticker, emoji (b-roll) y bg (colores de fondo).
 // Más adelante, estos objetos salen de una tabla (Supabase) con las noticias reales de los usuarios ya moderadas.
 export const SEGMENTS = [
@@ -58,6 +58,24 @@ export const SEGMENTS = [
   { etiqueta: 'ESPECTÁCULOS', titular: 'NUBE DE DESODORANTE EN EL ESTUDIO LLEGA A LA TERCERA FILA', bajada: 'Se rocía en vivo. El público estornuda. El aplauso, también.', movil: 'Desde un estudio de televisión muy perfumado',
     conductor: 'Momento de máxima fragancia en el estudio. El conductor del programa de entretenimientos más largo de la tele se roció con aerosol en vivo y la nube llegó a la tercera fila. El público aplaudió, tosió y pidió ventanas.',
     ticker: ['Se sortea quién abre la puerta del estudio', 'El aerosol se llevó el rating y una cortina', 'Se acepta cualquier marca, menos la que huele a ropa guardada'], emoji: ['💨', '🧴'], bg: ['#0a3d62', '#74b9ff'] },
+  { etiqueta: 'FARÁNDULA', titular: 'LA MESA DE MIRTHA LEGRAND SIGUE SIENDO LA MÁS CODICIADA', bajada: 'Lista de espera para sentarse. Los cubiertos, ya en orden.', movil: 'Desde un comedor muy bien puesto',
+    conductor: 'Noticia de gran elegancia: la mesa de Mirtha Legrand sigue siendo la más deseada de la televisión. Hay lista de espera para una silla, los candelabros brillan y el mantel, según fuentes, está impecable desde 1968.',
+    ticker: ['Servilleta pide ser doblada con cariño', 'La sopera sigue siendo una incógnita', 'Invitados llegan con mucho tiempo de anticipación'], emoji: ['🍽️', '🕯️', '👑'], bg: ['#4a0a2a', '#d8a24a'] },
+  { etiqueta: 'ÚLTIMO MOMENTO', titular: 'TERCERA GUERRA MUNDIAL: EL MEME LLEGÓ EN 4 MINUTOS', bajada: 'El chat familiar tardó seis en reenviarlo.', movil: 'Desde un grupo de WhatsApp',
+    conductor: 'Se volvió tendencia mundial la Tercera Guerra Mundial. En Argentina el meme estuvo listo en cuatro minutos, el chat familiar tardó seis en reenviarlo y una tía ya compró fideos por las dudas.',
+    ticker: ['Cadena de audios de cuatro minutos: aún sin conclusión', 'Se pide no confundir tendencia con noticia', 'Fideos: stock estable, ansiedad en alza'], emoji: ['🌍', '📱', '🍝'], bg: ['#1a1a2e', '#a01820'] },
+  { etiqueta: 'ESPECIAL', titular: 'FIN DEL MUNDO: SE PIDE QUE NO CAIGA VIERNES', bajada: 'Comerciantes y amigos del asado, preocupados.', movil: 'Desde la fila de la verdulería',
+    conductor: 'Según un posteo que alguien vio, el fin del mundo sería esta semana. Los vecinos piden por favor que no caiga viernes, porque ya hay asado organizado y nadie se quiere perder la sobremesa.',
+    ticker: ['Se aclara que el fin del mundo no incluye el postre', 'Mercado pide no entrar en pánico, ni en promoción', 'Fuentes: es la décima vez este año'], emoji: ['☄️', '🥩', '🌎'], bg: ['#2a0a0a', '#e08a1a'] },
+  { etiqueta: 'COLOR', titular: 'GEOPOLÍTICA: TU PRIMO PUBLICÓ UN HILO DE 40 TUITS', bajada: 'Ayer era experto en el penal. Mañana, en volcanes.', movil: 'Desde el sillón del living',
+    conductor: 'Mientras el mundo se pone nervioso, tu primo publicó un hilo de cuarenta tuits sobre geopolítica. Ayer era especialista en el penal. Mañana será especialista en volcanes. Se recomienda cerrar la app y tomar un mate.',
+    ticker: ['El hilo viene con mapa, flechas y mucha seguridad', 'Algoritmo premia al que más grita', 'Mate de la paz: disponible, pero frío'], emoji: ['🗺️', '🧉', '📱'], bg: ['#0b1f4d', '#4a6fd8'] },
+  { etiqueta: 'NAVIDAD', titular: 'EL PAN DULCE DIVIDE A LA FAMILIA, OTRA VEZ', bajada: 'Con frutas o sin frutas: el brindis, en peligro.', movil: 'Desde la mesa del 24',
+    conductor: 'Como cada diciembre, el pan dulce divide a la familia. Unos lo quieren con frutas, otros sin frutas, y un tío insiste en sacar las pasas una por una. La sidra, por las dudas, ya se está calentando.',
+    ticker: ['Cuñado ofrece explicar la economía antes del brindis', 'Se recomienda repartir el pan dulce con pinzas', 'Nochebuena: ya se hizo tarde para los fuegos'], emoji: ['🎄', '🍞', '🥂'], bg: ['#0a3d1e', '#c8202b'] },
+  { etiqueta: 'AÑO NUEVO', titular: 'LOS PROPÓSITOS DE 2027 DURARON HASTA LA TARDE DEL 1', bajada: 'El gimnasio, cerrado por feriado. La heladera, abierta.', movil: 'Desde un balcón con vista a la resaca',
+    conductor: 'Balance de fin de año: los propósitos de 2027 duraron hasta la tarde del primero. El gimnasio estaba cerrado por feriado, la heladera estaba abierta y todos coincidieron en empezar el lunes. O el otro.',
+    ticker: ['Dieta comienza el lunes, como todos los años', 'Se registra aumento de promesas y de pan dulce', 'Cuenta regresiva: ya están de nuevo'], emoji: ['🎆', '🥳', '🏋️'], bg: ['#0b0b3d', '#f0c020'] },
 ];
 
 // Sketches del clima: pantallas estilo Star4000 (kind: 'clima'). Tipografía e íconos de "Lucy's Local on the 8's" (ver THIRD_PARTY.md).

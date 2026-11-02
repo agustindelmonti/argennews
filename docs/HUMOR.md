@@ -19,7 +19,10 @@ Los chistes se refinan de a poco. Esta guía fija qué entra y qué no, para que
 - Canal 5 (comunidad por MCP) y tendencias: el filtro de `lib/app.js` **bloquea nombres de personas reales**. No se relaja: ahí el contenido lo escriben terceros.
 
 ## Personas reales en la programación
-Hoy no hay ninguna. Los dos segmentos con el presidente de la AFA (el meme de «seamos serios» y la toalla del palco) se retiraron por aburridos. Si en el futuro vuelve a entrar alguien, se anota acá con su base pública y su fuente, y se verifica en dos medios.
+- **Mirtha Legrand** (segmento «La mesa de Mirtha Legrand…»): figura histórica de la TV, tono cariñoso. El chiste es sobre el *formato* (la mesa, la vajilla, la lista de espera), no sobre su edad, su salud ni frases inventadas. Se escribe «Mirtha», con h.
+- Los dos segmentos con el presidente de la AFA se retiraron por aburridos.
+- Regla para sumar a alguien: base pública y conocida, chiste sobre su rol o formato público, cero acusaciones, cero edad/salud/familia, cero citas inventadas. Se anota acá.
+- **Política internacional:** los chistes de guerra y fin del mundo apuntan a *nuestra reacción* (memes, audios, hilos, fideos), no a las víctimas ni a líderes con nombre. Por eso no nombramos a Trump ni a nadie: el chiste funciona igual y no envejece mal.
 
 ## Capusotto, Tinelli y otros referentes
 - Se puede nombrar a *Peter Capusotto y sus videos* como homenaje y escribir chistes **en su estilo**, pero no se copian sus sketches, canciones ni frases textuales (tienen derechos de autor).
