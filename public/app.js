@@ -394,13 +394,13 @@ async function runAir(rec, seg) {
     a.total = a.intro + a.clipDur + (mine ? 1.6 : 0.6);
     let recorder = null;
     if (record) {
-      try { recorder = await startClip({ screen: cv, ac: S.ac, mix: S.mix, dest: S.dest, onFrame: CLIP }); a.recording = true; }
+      try { recorder = await startClip({ screen: cv, ac: S.ac, mix: S.mix, dest: S.dest, onFrame: CLIP, audioStream: S.tabStream || null }); a.recording = true; }
       catch (e) { recorder = null; if (rec) throw e; }   // la grabación automática nunca rompe la emisión
     }
     const t0 = S.ac.currentTime + 0.1; sting(t0);
     let src = null;
     if (buf) { src = S.ac.createBufferSource(); src.buffer = buf; src.connect(S.mix); src.start(t0 + 0.8); }
-    else if (!rec) speakFallback(st.conductor);
+    else if (!rec || S.tabStream) speakFallback(st.conductor);   // con audio de la pestaña, la voz del navegador sí queda en el clip
     a.start = performance.now() + 100;
     if (rec) say(rec === 'render' ? 'Grabando tu clip…' : 'Grabando la emisión…', 2000);
     await new Promise((res) => { a.done = res; if (a.cancel) res(); });
@@ -722,19 +722,31 @@ async function castVote(v) {
 }
 $('btnUp').onclick = () => castVote(1); $('btnDown').onclick = () => castVote(-1);
 
-/* ---------------- Descargar lo que ves: la noticia al aire, con el marco del televisor, como MP4 ---------------- */
-// Se vuelve a emitir desde el principio y se graba en el momento (sin diálogos del navegador). Ver clip.js.
-// La voz del navegador (speechSynthesis) no se puede grabar: el clip lleva cortina, efectos, el texto en pantalla y la voz pregrabada si existe.
+/* ---------------- Descargar lo que ves: la noticia al aire, con el marco del televisor y la voz, como MP4 ---------------- */
+// La voz del navegador (speechSynthesis) solo se puede grabar desde el audio de la pestaña: por eso el navegador pregunta si compartís la pestaña.
+// De esa captura SOLO se usa el audio; el video se compone aparte (clip.js) y se codifica como MP4 válido (la captura de pantalla directa dejaba el archivo roto).
+const canTabAudio = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
 async function downloadOnAir() {
   if (!S.on || S.busy || S.recTV) return;
   if (S.ch !== 3 && S.ch !== 5) { say('Sintonizá el canal 3 o 5 para descargar un clip.', 3000); return; }
-  const cur = S.air && !S.air.cancel ? S.air.seg : null;
   S.recTV = true; $('btnTV').classList.add('busy'); $('btnTV').disabled = true;
+  let tab = null, noVoice = false;
+  if (canTabAudio) {   // tiene que ser lo primero: el permiso necesita el toque del usuario
+    try { tab = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude', systemAudio: 'exclude' }); }
+    catch { S.recTV = false; $('btnTV').classList.remove('busy'); renderVote(); say('Descarga cancelada. Para que el clip lleve la voz hay que compartir esta pestaña.', 4200); return; }
+    tab.getVideoTracks().forEach((t) => t.stop());   // el video de la captura no se usa (lo compone clip.js); frenarlo ahorra CPU
+    if (!tab.getAudioTracks().length) { noVoice = true; tab.getTracks().forEach((t) => t.stop()); tab = null; }
+  } else noVoice = true;
+  const saved = { muted: S.muted, vol: S.vol }, cur = S.air && !S.air.cancel ? S.air.seg : null;
+  S.tabStream = tab;
+  S.muted = false; S.vol = Math.max(S.vol, 0.7); applyVolume();   // el audio de la pestaña es lo que suena: no puede estar en mute
   const myLoop = ++S.loopId; await stopAir(); S.staticUntil = performance.now() + 450;
   try {
     const seg = cur && (!cur.mine || ready()) ? cur : nextSeg();
-    if (seg) { say('Armando el clip…', 2500); await onAir('dl', seg); }
+    if (seg) { say(noVoice ? 'Armando el clip (sin voz)…' : 'Armando el clip…', 2500); await onAir('dl', seg); }
   } catch (e) { console.error(e); say('Este navegador no pudo armar el clip.', 3500); }
+  if (tab) tab.getTracks().forEach((t) => t.stop());
+  S.tabStream = null; S.muted = saved.muted; S.vol = saved.vol; applyVolume();
   S.recTV = false; $('btnTV').classList.remove('busy'); renderVote();
   if (S.on && (S.ch === 3 || S.ch === 5) && S.loopId === myLoop) startLoop();
 }
