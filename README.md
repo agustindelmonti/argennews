@@ -12,9 +12,17 @@ Sin `ANTHROPIC_API_KEY` funciona en modo demo (guiones de ejemplo).
 
 ## La tele
 Arranca encendida en el canal 3 con programación continua (`public/seed.js`: noticias, clima, publicidades y
-horóscopo ficticios) con zapping entre segmentos. Canales: 1 Cámara, 2 Redacción, 3 Pampa 7, 4 Estudio.
+horóscopo ficticios) con zapping entre segmentos. Canales: 1 Cámara, 2 Redacción, 3 Pampa 7, 4 Estudio, 5 Comunidad, 6 Tweets.
 Tu noticia entra primero y vuelve a salir cada 4 segmentos. Teclas: `P` encender/apagar, `1-4` canal,
 `↑↓` canal, `←→` volumen, `M` mute, `G` guía, `F` pantalla completa.
+
+## Contenido que entra por afuera
+- **Canal 5 · Comunidad (MCP):** `POST /mcp` (Streamable HTTP, sin estado). El asistente de cada persona (ChatGPT, Claude, etc.) escribe la noticia con sus propios tokens usando `guia_de_estilo` y la envía con `crear_noticia`. Se valida (largos, sin links, filtro de temas), se limita por IP y queda pendiente hasta que la apruebes en `/admin.html` (o `AUTO_APPROVE=1` con moderación por IA).
+- **Canal 6 · Tweets:** elegís los tweets en el admin y se muestran con el embed oficial de X (el video queda en X).
+- **Tendencias:** en el admin traés los temas del día (RSS de Google Trends, Argentina), la IA los convierte en situaciones ficticias saltando personas, política y temas sensibles, y queda pendiente de tu aprobación.
+- **Colaboraciones:** desde el admin cargás un segmento con crédito y, si querés, un link https a un video del que tengas permiso.
+
+Prueba del backend: `node test/smoke.mjs`.
 
 ## Cómo funciona
 - `public/app.js`: todo el render va a un `<canvas>`; la vista previa y la descarga usan el mismo pipeline

@@ -64,3 +64,15 @@ textarea{resize:none}
 #pCam.clear h2,#pCam.clear p{display:none}
 #pCam.clear .row{pointer-events:auto}
 #pCam.clear #lblFile{display:none}
+
+/* ---- Canal 6 (tweets) y canal 5 (comunidad) ---- */
+#pX{display:flex;flex-direction:column}
+#pX h2 small{color:#c9d3ff;font-weight:400;letter-spacing:0}
+#xBox{flex:1;min-height:0;overflow:hidden;display:flex;justify-content:center;background:#0006}
+#xHost{transform-origin:top center;display:flex;justify-content:center;width:100%}
+#pX .row{margin-bottom:0}
+#pX a.osd-btn{text-decoration:none}
+#pComBar{position:absolute;top:16%;right:3%;z-index:2}
+#pComBar .osd-btn{font-size:.72em;padding:.25em .6em}
+#pHow{z-index:3;inset:8% 7% 14%}
+#pHow label{margin:.4em 0}

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Pampa 7 · Administración</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0d14;--card:#141826;--line:#262d45;--ink:#f2f4fa;--mut:#9aa3bd;--red:#e0202b;--blue:#1b4fd8;--ok:#2fbf71}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-left))}
+h1{font-size:20px;margin:8px 0 16px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:0 0 10px}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+button,input,textarea,select{font:inherit;color:var(--ink);background:#0d111d;border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+button{cursor:pointer;background:#1d2338}button.p{background:var(--blue);border-color:var(--blue)}button.d{background:var(--red);border-color:var(--red)}button.g{background:var(--ok);border-color:var(--ok);color:#04130b}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #7aa2ff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.item{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0}
+.item h3{margin:0 0 4px;font-size:15px}.meta{color:var(--mut);font-size:13px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mut);margin-right:4px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid .w{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--mut)}input,textarea{width:100%}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#000d;border:1px solid #fff6;padding:8px 14px;border-radius:8px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Pampa 7 · Administración</h1>
+  <section id="login"><h2>Acceso</h2>
+    <div class="row"><input id="token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" style="max-width:320px"><button class="p" id="btnLogin">Entrar</button></div></section>
+
+  <div id="app" hidden>
+    <section><h2>Pendientes de aprobación</h2><div id="pending"></div></section>
+
+    <section><h2>Tweets del canal 6 (embeds oficiales)</h2>
+      <div class="row"><input id="tweetUrl" placeholder="https://x.com/usuario/status/123…" style="flex:1;min-width:240px"><button class="p" id="btnTweet">Agregar</button></div>
+      <div id="embeds"></div></section>
+
+    <section><h2>Tendencias → segmentos inspirados</h2>
+      <p class="meta">Trae los temas del día en Argentina (RSS de Google Trends). La IA los convierte en situaciones ficticias y saltea personas, política, crímenes y temas sensibles. Todo queda pendiente de tu aprobación. Usa tu clave de IA.</p>
+      <div class="row"><button id="btnTrends">Traer tendencias</button><button class="p" id="btnGen" disabled>Generar segmentos</button></div>
+      <div id="topics"></div>
+      <label>O pegá temas a mano (uno por línea)<textarea id="manual" rows="3"></textarea></label></section>
+
+    <section><h2>Colaboración con permiso (crédito + video propio)</h2>
+      <p class="meta">Solo para material de alguien que te dio permiso. Sale aprobado directo en los canales 3 y 5 con "Gentileza de …".</p>
+      <div class="grid">
+        <label>Crédito (nombre o @usuario)<input id="cAutor" maxlength="40"></label>
+        <label>Link https del video (.mp4 / .webm / .mov, opcional)<input id="cVideo" placeholder="https://…/clip.mp4"></label>
+        <label>Etiqueta<input id="cEtiqueta" value="EXCLUSIVA" maxlength="24"></label>
+        <label>Móvil<input id="cMovil" value="Desde el lugar de los hechos" maxlength="44"></label>
+        <label class="w">Titular<input id="cTitular" maxlength="60"></label>
+        <label class="w">Bajada<input id="cBajada" maxlength="100"></label>
+        <label class="w">Texto del conductor<textarea id="cConductor" rows="3" maxlength="300"></textarea></label>
+        <label>Emojis (si no hay video)<input id="cEmoji" value="📺" maxlength="12"></label>
+        <label>Ticker (separá con |)<input id="cTicker" placeholder="frase 1 | frase 2"></label>
+      </div>
+      <label class="row" style="flex-direction:row;align-items:center;color:var(--ink)"><input type="checkbox" id="cPermiso" style="width:auto"> Tengo permiso del autor para emitir este material</label>
+      <div class="row"><button class="g" id="btnColab">Publicar</button></div></section>
+
+    <section><h2>Aprobadas recientes</h2><div id="approved"></div></section>
+  </div>
+</main>
+<div id="toast" hidden></div>
+<script>
+const $ = (id) => document.getElementById(id);
+let token = ''; try { token = sessionStorage.getItem('p7tok') || ''; } catch {}
+function toast(t) { const e = $('toast'); e.textContent = t; e.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (e.hidden = true), 3500); }
+async function api(path, body) {
+  const r = await fetch('/admin/api' + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || r.status); return d;
+}
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function card(s, actions) {
+  return `<div class="item"><h3>${esc(s.emoji.join(' '))} ${esc(s.titular)}</h3>
+    <div class="meta"><span class="tag">${esc(s.source)}</span><span class="tag">${esc(s.etiqueta)}</span>${s.autor ? `<span class="tag">${esc(s.autor)}</span>` : ''}${s.tema ? `<span class="tag">tema: ${esc(s.tema)}</span>` : ''}${s.video ? '<span class="tag">video</span>' : ''}</div>
+    <div>${esc(s.bajada)}</div><div class="meta">${esc(s.conductor)}</div><div class="row">${actions}</div></div>`;
+}
+async function load() {
+  const st = await api('/state');
+  $('login').hidden = true; $('app').hidden = false;
+  const pend = st.segments.filter((s) => s.status === 'pending'), appr = st.segments.filter((s) => s.status === 'approved').slice(0, 20);
+  $('pending').innerHTML = pend.length ? pend.map((s) => card(s, `<button class="g" data-a="approve" data-id="${s.id}">Aprobar</button><button class="d" data-a="reject" data-id="${s.id}">Rechazar</button>`)).join('') : '<p class="meta">No hay nada pendiente.</p>';
+  $('approved').innerHTML = appr.map((s) => card(s, `<button class="d" data-a="delete" data-id="${s.id}">Quitar</button>`)).join('') || '<p class="meta">Todavía no hay.</p>';
+  $('embeds').innerHTML = st.embeds.map((e) => `<div class="item row"><a href="${esc(e.url)}" target="_blank" rel="noopener" style="color:#7aa2ff">${esc(e.id)}</a><button class="d" data-embed="${esc(e.id)}">Quitar</button></div>`).join('') || '<p class="meta">Sin tweets todavía.</p>';
+  $('btnGen').disabled = !st.ai;
+}
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  try {
+    if (b.dataset.a) { await api(`/segments/${b.dataset.id}/${b.dataset.a}`, {}); toast('Listo'); load(); }
+    if (b.dataset.embed) { await api(`/embeds/${b.dataset.embed}/delete`, {}); load(); }
+  } catch (err) { toast(err.message); }
+});
+$('btnLogin').onclick = async () => { token = $('token').value.trim(); try { await load(); try { sessionStorage.setItem('p7tok', token); } catch {} } catch (e) { toast('Token inválido o admin desactivado.'); } };
+$('btnTweet').onclick = async () => { try { await api('/embeds', { url: $('tweetUrl').value }); $('tweetUrl').value = ''; toast('Tweet agregado'); load(); } catch (e) { toast(e.message); } };
+$('btnTrends').onclick = async () => {
+  try { const d = await api('/trends'); $('topics').innerHTML = d.topics.map((t, i) => `<label class="row" style="flex-direction:row;align-items:center;color:var(--ink)"><input type="checkbox" style="width:auto" data-topic="${esc(t)}"> ${esc(t)}</label>`).join(''); }
+  catch (e) { toast(e.message); }
+};
+$('btnGen').onclick = async () => {
+  const topics = [...document.querySelectorAll('[data-topic]:checked')].map((c) => c.dataset.topic).concat($('manual').value.split('\n').map((x) => x.trim()).filter(Boolean));
+  $('btnGen').disabled = true; toast('Generando…');
+  try { const d = await api('/trends/generate', { topics }); toast(`${d.added} segmentos pendientes, ${d.skipped} salteados`); load(); } catch (e) { toast(e.message); }
+  $('btnGen').disabled = false;
+};
+$('btnColab').onclick = async () => {
+  try {
+    await api('/segments', { autor: $('cAutor').value, video: $('cVideo').value || undefined, etiqueta: $('cEtiqueta').value, movil: $('cMovil').value, titular: $('cTitular').value, bajada: $('cBajada').value, conductor: $('cConductor').value,
+      emoji: [...new Intl.Segmenter().segment($('cEmoji').value)].map((x) => x.segment).filter((x) => x.trim()), ticker: $('cTicker').value.split('|').map((x) => x.trim()).filter(Boolean), permiso: $('cPermiso').checked });
+    toast('Publicado'); load();
+  } catch (e) { toast(e.message); }
+};
+if (token) load().catch(() => {});
+</script>
+</body>
+</html>

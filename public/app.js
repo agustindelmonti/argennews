@@ -4,11 +4,12 @@
 import { SEGMENTS } from './seed.js';
 const W = 640, H = 480;
 const MAX_CLIP = 12;
-const CH_NAMES = { 1: 'CÁMARA', 2: 'REDACCIÓN', 3: 'PAMPA 7', 4: 'ESTUDIO' };
+const NCH = 6;
+const CH_NAMES = { 1: 'CÁMARA', 2: 'REDACCIÓN', 3: 'PAMPA 7', 4: 'ESTUDIO', 5: 'COMUNIDAD', 6: 'TWEETS' };
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const cv = $('screen'), g = cv.getContext('2d');
-const vid = $('vid'), live = $('preview');
+const vid = $('vid'), vid2 = $('vid2'), live = $('preview');
 
 const S = {
   on: true, ch: 3, guide: false, filter: true, userNext: false, sinceMine: 0, order: [],
@@ -21,7 +22,9 @@ const S = {
   ttsBuf: null, ttsText: '',
   stream: null, recorder: null, recChunks: [], recStart: 0,
   staticUntil: 0, pwr: null,   // animación de encendido/apagado del tubo
+  remote: [], how: false,      // segmentos aprobados del servidor y panel "Cómo participar"
 };
+const X = { list: [], idx: 0, timer: 0, widgets: null };   // canal de tweets (embeds oficiales)
 const ready = () => !!S.story && S.clipDur > 0;
 
 fetch('/api/config').then((r) => r.json()).then((c) => { S.config = c; }).catch(() => {});
@@ -88,15 +91,18 @@ function speakFallback(text) {
 }
 
 /* ---------------- Encendido, canales, navegación ---------------- */
-const PAGES = { 1: 'pCam', 2: 'pDesk', 4: 'pStudio' };
+const PAGES = { 1: 'pCam', 2: 'pDesk', 4: 'pStudio', 6: 'pX' };
 function renderPages() {
   const show = (id, v) => { $(id).hidden = !v; };
-  ['pCam', 'pDesk', 'pStudio', 'pGuide', 'pAir'].forEach((id) => show(id, false));
+  ['pCam', 'pDesk', 'pStudio', 'pGuide', 'pAir', 'pX', 'pHow', 'pComBar'].forEach((id) => show(id, false));
+  if (!S.on || S.guide || S.ch !== 6) stopX();
   if (!S.on) return;
   if (S.guide) { show('pGuide', true); focusFirst('pGuide'); return; }
   if (PAGES[S.ch]) { show(PAGES[S.ch], true); focusFirst(PAGES[S.ch]); }
   if (S.ch === 3) show('pAir', ready());
   if (S.ch === 2) refreshDesk();
+  if (S.ch === 5) { show('pComBar', true); if (S.how) { show('pHow', true); focusFirst('pHow'); } }
+  if (S.ch === 6) enterX();
 }
 function focusFirst(id) {
   const el = $(id).querySelector('button:not([disabled]),input:not([hidden]):not([disabled]),label.osd-btn');
@@ -107,12 +113,13 @@ function guardBusy() { if (S.busy) { say('Grabando la emisión… esperá un mom
 function setChannel(n, silent) {
   if (!S.on || guardBusy()) return;
   if (S.mode === 'live') { say('Detené la grabación antes de cambiar de canal.'); return; }
-  n = ((n - 1 + 4) % 4) + 1;
-  S.ch = n; S.guide = false; S.loopId++;
+  n = ((n - 1 + NCH) % NCH) + 1;
+  S.ch = n; S.guide = false; S.loopId++; S.order = []; S.how = false;
   if (S.air) S.air.cancel = true;
   if (!silent) { S.staticUntil = performance.now() + 380; blip(660, 0.12); }
   badge(); renderPages();
   if (n === 3) startLoop();
+  if (n === 5) loadRemote().then(() => { if (S.ch !== 5 || S.guide) return; if (!pool().length) { S.how = true; renderPages(); } else startLoop(); });
 }
 function toggleGuide() { if (!S.on || guardBusy()) return; S.guide = !S.guide; blip(990, 0.06); renderPages(); }
 
@@ -144,7 +151,7 @@ addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   const map = { p: 'power', g: 'guide', m: 'mute', f: 'full', '+': 'volup', '=': 'volup', '-': 'voldn', arrowright: 'volup', arrowleft: 'voldn', arrowup: 'chup', arrowdown: 'chdn' };
   if (k === 'escape' && S.guide) { toggleGuide(); return; }
-  if (/^[1-4]$/.test(k)) { ensureAudioSoft(); setChannel(Number(k)); e.preventDefault(); return; }
+  if (/^[1-6]$/.test(k)) { ensureAudioSoft(); setChannel(Number(k)); e.preventDefault(); return; }
   if (map[k]) { ensureAudioSoft(); ACT[map[k]](); e.preventDefault(); }
 });
 
@@ -253,6 +260,14 @@ const story = () => ({
 
 /* ---------------- Canal 3: al aire / grabación ---------------- */
 // seg: {mine:true} = la noticia del usuario (usa su video); si no, un segmento de la programación (b-roll con emojis).
+function loadVid2(url) {
+  return new Promise((res) => {
+    const done = (v) => { clearTimeout(t); vid2.onloadedmetadata = vid2.onerror = null; res(v); };
+    const t = setTimeout(() => done(false), 6000);
+    vid2.onloadedmetadata = () => done(true); vid2.onerror = () => done(false);
+    vid2.preload = 'auto'; vid2.src = url;
+  });
+}
 function onAir(rec, seg = { mine: true }) {
   if (S.airPromise) return S.airPromise;
   S.airPromise = runAir(rec, seg).finally(() => { S.airPromise = null; });
@@ -261,11 +276,12 @@ function onAir(rec, seg = { mine: true }) {
 async function runAir(rec, seg) {
   ensureAudio();
   const mine = !!seg.mine;
-  const st = mine ? story() : { ...seg, ticker: seg.ticker.join('   ◆   ') };
-  const a = { cancel: false, start: Infinity, intro: 0, total: 0, st, mine, seg, clipDur: mine ? S.clipDur : 4, clipStarted: false, done: null };
+  const st = mine ? story() : { ...seg, movil: seg.credito || seg.movil, ticker: (seg.ticker?.length ? seg.ticker : ['Pampa 7 Noticias, informando desde siempre']).join('   ◆   ') };
+  const a = { cancel: false, start: Infinity, intro: 0, total: 0, st, mine, seg, clipDur: mine ? S.clipDur : 4, v2: false, clipStarted: false, done: null };
   S.air = a; S.mode = 'air'; if (rec) S.busy = true;
   let buf = null;
   if (mine) { await prepareVoice(st.conductor); buf = S.ttsBuf; }
+  else if (seg.video && await loadVid2(seg.video)) { a.v2 = true; a.clipDur = Math.min(vid2.duration || 8, 20); }
   if (!a.cancel) {
     const words = st.conductor.split(/\s+/).length;
     a.intro = buf ? Math.max(4.5, buf.duration + 1) : Math.min(9, Math.max(4.5, words * 0.33 + 1.5));
@@ -286,7 +302,7 @@ async function runAir(rec, seg) {
     a.start = performance.now() + 100;
     if (rec) say('Grabando la emisión…', 2000);
     await new Promise((res) => { a.done = res; if (a.cancel) res(); });
-    vid.pause(); src && src.stop(); window.speechSynthesis && speechSynthesis.cancel();
+    vid.pause(); vid2.pause(); src && src.stop(); window.speechSynthesis && speechSynthesis.cancel();
     if (recorder) {
       await new Promise((res) => { recorder.onstop = res; recorder.stop(); });
       if (!a.cancel) {
@@ -304,22 +320,28 @@ async function runAir(rec, seg) {
 async function stopAir() { if (S.air) S.air.cancel = true; if (S.airPromise) await S.airPromise; }
 
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// Canal 3: programación de relleno + todo lo aprobado. Canal 5: solo lo que mandó la comunidad (MCP y colaboraciones).
+const pool = () => (S.ch === 5 ? S.remote.filter((x) => x.source !== 'trend') : SEGMENTS.concat(S.remote));
 function nextSeg() {
-  if (ready() && (S.userNext || S.sinceMine >= 4)) { S.userNext = false; S.sinceMine = 0; return { mine: true }; }   // tu noticia sale primero y vuelve cada tanto
-  S.sinceMine++;
-  if (!S.order.length) S.order = shuffle(SEGMENTS.map((_, i) => i));
-  return SEGMENTS[S.order.pop()];
+  if (S.ch === 3 && ready() && (S.userNext || S.sinceMine >= 4)) { S.userNext = false; S.sinceMine = 0; return { mine: true }; }   // tu noticia sale primero y vuelve cada tanto
+  if (S.ch === 3) S.sinceMine++;
+  if (!S.order.length) S.order = shuffle(pool().slice());
+  return S.order.pop() || null;
 }
 // Programación continua: segmento tras segmento con zapping (estática) en el medio.
 async function startLoop() {
   const id = ++S.loopId;
   await stopAir();
-  while (id === S.loopId && S.on && S.ch === 3) {
+  while (id === S.loopId && S.on && (S.ch === 3 || S.ch === 5)) {
     const seg = nextSeg();
+    if (!seg) break;
     S.staticUntil = performance.now() + 350;
     await onAir(false, seg);
     if (id !== S.loopId) break;
   }
+}
+async function loadRemote() {
+  try { const r = await fetch('/api/programacion'); if (!r.ok) return; const d = await r.json(); S.remote = d.segments || []; X.list = d.embeds || []; } catch { /* sin servidor: solo la programación de relleno */ }
 }
 $('btnAgain').onclick = () => { S.userNext = true; if (S.air) S.air.cancel = true; };   // salta al siguiente y pone la tuya primero
 $('btnDl').onclick = async () => {
@@ -328,6 +350,51 @@ $('btnDl').onclick = async () => {
   await onAir(true, { mine: true });
   if (S.ch === 3 && S.on) startLoop();
 };
+
+/* ---------------- Canal 5: cómo participar ---------------- */
+$('btnHow').onclick = () => { S.how = !S.how; renderPages(); };
+$('btnHowClose').onclick = () => { S.how = false; renderPages(); };
+$('mcpUrl').value = location.origin + '/mcp';
+$('btnCopy').onclick = async () => { try { await navigator.clipboard.writeText($('mcpUrl').value); say('Link copiado.'); } catch { $('mcpUrl').select(); say('Copialo con Ctrl+C.'); } };
+
+/* ---------------- Canal 6: tweets elegidos (embeds oficiales de X) ---------------- */
+function loadWidgets() {
+  if (X.widgets) return X.widgets;
+  X.widgets = new Promise((res) => {
+    const sc = document.createElement('script'); sc.src = 'https://platform.twitter.com/widgets.js'; sc.async = true;
+    sc.onload = () => res(window.twttr || null); sc.onerror = () => res(null); setTimeout(() => res(window.twttr || null), 8000);
+    document.head.appendChild(sc);
+  });
+  return X.widgets;
+}
+function stopX() { clearInterval(X.timer); X.timer = 0; }
+function fitX() {   // achica el tweet para que entre en la pantalla
+  const box = $('xBox'), host = $('xHost'); host.style.transform = 'none';
+  const k = Math.min(1, box.clientHeight / (host.scrollHeight || 1), box.clientWidth / (host.scrollWidth || 1));
+  host.style.transform = `scale(${k})`;
+}
+async function showTweet() {
+  const t = X.list[X.idx], host = $('xHost'); host.innerHTML = '';
+  $('xLink').href = t.url; $('xCount').textContent = `${X.idx + 1}/${X.list.length}`;
+  const tw = await loadWidgets();
+  if (!tw || !tw.widgets) { $('xCap').textContent = 'No pude cargar X desde acá. Podés abrir el tweet con el botón.'; return; }
+  try {
+    const el = await tw.widgets.createTweet(t.id, host, { theme: 'dark', conversation: 'none', dnt: true, align: 'center' });
+    $('xCap').textContent = el ? 'Contenido de X, de sus autores. Pampa 7 no está afiliado.' : 'Este tweet ya no está disponible.';
+    setTimeout(fitX, 400); setTimeout(fitX, 1500);
+  } catch { $('xCap').textContent = 'Este tweet no se pudo cargar.'; }
+}
+function stepX(d) { if (!X.list.length) return; X.idx = (X.idx + d + X.list.length) % X.list.length; showTweet(); clearInterval(X.timer); X.timer = setInterval(() => stepX(1), 25000); }
+async function enterX() {
+  stopX(); await loadRemote();
+  if (S.ch !== 6 || S.guide || !S.on) return;
+  const empty = !X.list.length;
+  ['xPrev', 'xNext', 'xLink'].forEach((id) => ($(id).hidden = empty));
+  if (empty) { $('xHost').innerHTML = ''; $('xCount').textContent = ''; $('xCap').textContent = 'Todavía no hay tweets elegidos. Se agregan desde el panel de administración.'; return; }
+  X.idx = Math.min(X.idx, X.list.length - 1); showTweet(); X.timer = setInterval(() => stepX(1), 25000);
+}
+$('xPrev').onclick = () => stepX(-1); $('xNext').onclick = () => stepX(1);
+addEventListener('resize', () => { if (S.ch === 6) fitX(); });
 
 /* ---------------- Canal 4: Estudio ---------------- */
 $('optFilter').onchange = (e) => { S.filter = e.target.checked; };
@@ -384,10 +451,11 @@ function drawStudio(t, st, a) {
   logo(24, 24, 1.2);
   g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.font = '800 22px Impact, Arial'; g.fillText('PAMPA 7 NOTICIAS', 86, 42); g.textBaseline = 'alphabetic';
   g.fillStyle = '#e0202b'; g.fillRect(24, 82, 150, 24); g.fillStyle = '#fff'; g.font = '800 14px Arial'; g.fillText('● EN VIVO', 34, 99);
+  if (a && st.movil) { g.fillStyle = 'rgba(0,0,0,.65)'; g.font = '600 13px Arial'; g.fillRect(24, 108, g.measureText(st.movil).width + 16, 22); g.fillStyle = '#fff'; g.fillText(st.movil, 32, 124); }
   if (a) {
     const full = st.conductor, shown = full.slice(0, Math.max(0, Math.floor(((t - 0.8) / Math.max(1, a.intro - 1.8)) * full.length)));
-    g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(24, 124, 330, 192); g.fillStyle = '#fff';
-    wrap(shown, 300, '600 17px Arial').slice(0, 8).forEach((l, i) => g.fillText(l, 40, 152 + i * 22));
+    g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(24, 136, 330, 180); g.fillStyle = '#fff';
+    wrap(shown, 300, '600 17px Arial').slice(0, 7).forEach((l, i) => g.fillText(l, 40, 164 + i * 22));
   }
 }
 function drawOverlay(t, st) {
@@ -447,7 +515,8 @@ function drawIdle(t) {
   } else if (S.ch === 3) {
     if (ready()) { drawStudio(t, { conductor: '' }, null); g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(0, 0, W, H); }
     else drawBars(t, 'SIN SEÑAL · CREÁ TU NOTICIA EN LOS CANALES 1 Y 2');
-  } else drawStudio(t, { conductor: '' }, null);
+  } else if (S.ch === 5 && !pool().length) drawBars(t, 'SIN SEÑAL · SÉ EL PRIMERO EN MANDAR UNA NOTICIA');
+  else drawStudio(t, { conductor: '' }, null);
 }
 function drawPower() {   // tubo: colapso a una línea y a un punto / expansión
   const p = S.pwr, el = (performance.now() - p.at) / 1000;
@@ -484,6 +553,9 @@ function frame(now) {
         if (a.mine) {
           if (!a.clipStarted) { a.clipStarted = true; vid.currentTime = 0; vid.play().catch(() => {}); }
           if (vid.videoWidth) cover(vid, vid.videoWidth, vid.videoHeight);
+        } else if (a.v2) {   // video de una colaboración con permiso
+          if (!a.clipStarted) { a.clipStarted = true; vid2.currentTime = 0; vid2.muted = S.muted; vid2.volume = S.vol; vid2.play().catch(() => { vid2.muted = true; vid2.play().catch(() => {}); }); }
+          if (vid2.videoWidth) cover(vid2, vid2.videoWidth, vid2.videoHeight);
         } else drawBroll(el - a.intro, a.seg);
         drawOverlay(el - a.intro, a.st);
       } else if (el < a.total) {
@@ -505,5 +577,6 @@ S.staticUntil = performance.now() + 500;
 renderPages();
 setTimeout(badge, 500);
 setTimeout(() => say('Tocá cualquier botón para activar el sonido.', 4500), 1200);
+loadRemote();
 startLoop();
 for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, ensureAudioSoft, { once: true });

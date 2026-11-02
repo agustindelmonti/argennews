@@ -64,6 +64,23 @@
             <p class="note">Pampa 7 Noticias es un canal ficticio de humor. Cualquier parecido con la realidad es pura coincidencia.</p>
           </section>
 
+          <section class="page" id="pX" hidden aria-label="Canal 6, Tweets">
+            <h2>Canal 6 · Tweets <small id="xCount"></small></h2>
+            <div id="xBox"><div id="xHost"></div></div>
+            <p class="note" id="xCap"></p>
+            <div class="row"><button class="osd-btn" id="xPrev" aria-label="Tweet anterior">◀</button><button class="osd-btn" id="xNext" aria-label="Tweet siguiente">▶</button><a class="osd-btn" id="xLink" href="#" target="_blank" rel="noopener noreferrer">Ver en X ↗</a></div>
+          </section>
+
+          <div id="pComBar" hidden><button class="osd-btn" id="btnHow">ℹ Cómo participar</button></div>
+          <section class="page" id="pHow" hidden aria-label="Cómo mandar tu noticia">
+            <h2>Mandá tu noticia desde tu IA</h2>
+            <p>Conectá tu asistente (ChatGPT, Claude u otro con soporte MCP) a este canal y pedile: <i>«Mandá a Pampa 7 una noticia sobre mi gato que no quiere bajar del ropero»</i>.</p>
+            <p>Tu asistente la escribe con sus propios tokens y la envía. Si pasa la moderación, sale en los canales 5 y 3.</p>
+            <label>Servidor MCP<input id="mcpUrl" readonly></label>
+            <div class="row"><button class="osd-btn" id="btnCopy">Copiar link</button><button class="osd-btn" id="btnHowClose">Cerrar</button></div>
+            <p class="note">ChatGPT: Ajustes → Apps y conectores → modo desarrollador → agregar servidor MCP (depende de tu plan). Claude: Ajustes → Conectores → conector personalizado. Sin login, con límite diario.</p>
+          </section>
+
           <section class="page" id="pGuide" hidden aria-label="Guía de canales">
             <h2>Guía de canales</h2>
             <ul id="guide">
@@ -71,6 +88,8 @@
               <li><button class="osd-btn" data-goto="2"><b>2</b> Redacción <small>generá y editá la noticia</small></button></li>
               <li><button class="osd-btn" data-goto="3"><b>3</b> Pampa 7 <small>noticias sin parar</small></button></li>
               <li><button class="osd-btn" data-goto="4"><b>4</b> Estudio <small>ajustes y novedades</small></button></li>
+              <li><button class="osd-btn" data-goto="5"><b>5</b> Comunidad <small>noticias hechas por la gente</small></button></li>
+              <li><button class="osd-btn" data-goto="6"><b>6</b> Tweets <small>los elegidos del canal</small></button></li>
             </ul>
           </section>
         </div>
@@ -91,6 +110,7 @@
   </nav>
 </div>
 <video id="vid" playsinline preload="auto" hidden></video>
+<video id="vid2" playsinline preload="auto" hidden></video>
 <video id="preview" muted playsinline hidden></video>
 <script type="module" src="app.js"></script>
 </body>
