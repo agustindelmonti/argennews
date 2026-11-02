@@ -11,7 +11,7 @@
     },
     {
       "source": "/admin/api/:path*",
-      "destination": "/api/admin/:path*"
+      "destination": "/api/admin?p=:path*"
     }
   ],
   "functions": {
