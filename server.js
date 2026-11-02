@@ -28,10 +28,12 @@ const server = http.createServer(async (req, res) => {
     if (p === '/' || p === '\\') p = '/index.html';
     const file = join(PUBLIC, p);
     if (!file.startsWith(PUBLIC)) { res.writeHead(403); return res.end('forbidden'); }
+    const data = await readFile(file);   // primero se lee: si no existe, todavía se puede contestar 404
     res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
-    res.end(await readFile(file));
+    res.end(data);
   } catch (e) {
-    if (e.code === 'ENOENT') { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end('not found'); }
+    if (res.headersSent) return res.destroy();   // ya empezó la respuesta: no se puede cambiar, solo cortar (nunca tirar el servidor)
+    if (e.code === 'ENOENT' || e.code === 'EISDIR') { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end('not found'); }
     console.error(e); res.writeHead(500); res.end('Error interno');
   }
 });

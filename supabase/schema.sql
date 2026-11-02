@@ -5,7 +5,7 @@
 create table if not exists public.segments (
   id         uuid primary key,
   source     text not null check (source in ('mcp', 'trend', 'colab')),
-  status     text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  status     text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'pinned')),   -- pinned = destacada a mano
   created_at timestamptz not null default now(),
   data       jsonb not null
 );

@@ -38,13 +38,7 @@ export const SEGMENTS = [
   { etiqueta: 'EXCLUSIVA', titular: 'EL MISTERIO DEL TUPPER QUE NADIE RECLAMA', bajada: 'Lleva tres semanas en la heladera de la oficina.', movil: 'Desde la cocina del tercer piso',
     conductor: 'Una exclusiva de este canal. En el fondo de la heladera hay un tupper que nadie reconoce. Está tapado y tiene una etiqueta ilegible. Los empleados evitan mirarlo. El tupper, según dicen, también.',
     ticker: ['Expertos recomiendan no abrirlo', 'El olor ya tiene su propia opinión', 'Se evalúa una misa'], emoji: ['🥡', '🧊'], bg: ['#16314d', '#6ec1d8'] },
-  // --- Fútbol argentino (ver docs/HUMOR.md: solo cosas públicas y livianas; nada de causas judiciales, vida privada ni frases inventadas como si fueran reales) ---
-  { etiqueta: 'DEPORTES', titular: '«SEAMOS SERIOS»: LA FRASE QUE YA NADIE DICE EN SERIO', bajada: 'Se pide seriedad. Los memes piden otra cosa.', movil: 'Desde el predio de Ezeiza',
-    conductor: 'Atención, atención. El presidente de la AFA, el Chiqui Tapia, tiene una frase que se hizo meme: «seamos serios». Desde entonces, nadie puede decirla en serio. Nuestro móvil lo intentó en el estudio y se rió a los tres segundos.',
-    ticker: ['Se recomienda decirla con cara seria', 'Memes: muchos. Seriedad: en recuento', 'El mate prefiere no opinar'], emoji: ['⚽', '🧉'], bg: ['#0a3d62', '#74b9ff'] },
-  { etiqueta: 'COLOR', titular: 'LA TOALLA MÁS FAMOSA DEL FÚTBOL PIDE VACACIONES', bajada: 'Hace años que seca sudores en el palco. Quiere conocer el mar.', movil: 'Desde un palco cualquiera',
-    conductor: 'Llega una historia conmovedora desde el mundo del fútbol. La toalla del palco, la del video viral junto al Chiqui Tapia, pidió vacaciones. Según su entorno, quiere conocer el mar y ya no seca ni un poquito. Una pena para los días de calor.',
-    ticker: ['Se estudia reemplazarla por un ventilador', 'Fuentes cercanas al sudor confirman el cansancio', 'La toalla no dio declaraciones'], emoji: ['🧻', '🏖️'], bg: ['#1b4fd8', '#ffd400'] },
+  // --- Fútbol argentino (ver docs/HUMOR.md) ---
   { etiqueta: 'DEPORTES', titular: 'NUEVO FORMATO: 47 ZONAS, 3 FASES Y UN REPECHAJE DE MATE', bajada: 'Los hinchas piden un mapa. Les entregan una planilla.', movil: 'Desde una oficina con muchas planillas',
     conductor: 'Gran anuncio en el fútbol argentino: se presentó el nuevo formato de torneo. Habrá cuarenta y siete zonas, tres fases y un repechaje de mate. Nadie entendió nada, pero todos dicen que van a ir a la cancha igual.',
     ticker: ['Especialistas en tablas piden aumento', 'Se sortea quién explica el desempate', 'El árbitro llega con calculadora'], emoji: ['📋', '🏟️', '🧉'], bg: ['#0a6b2b', '#7bd34a'] },

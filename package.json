@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/smoke.mjs && node test/supabase-mock.mjs && MODE=edge node test/supabase-mock.mjs"
+    "test": "node test/ranking.mjs && node test/smoke.mjs && node test/supabase-mock.mjs && MODE=edge node test/supabase-mock.mjs"
   },
   "engines": {
     "node": "22.x"

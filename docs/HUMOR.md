@@ -18,14 +18,8 @@ Los chistes se refinan de a poco. Esta guía fija qué entra y qué no, para que
 - `public/seed.js`: programación de relleno, curada a mano. **Acá sí pueden aparecer personas públicas**, bajo las reglas de arriba.
 - Canal 5 (comunidad por MCP) y tendencias: el filtro de `lib/app.js` **bloquea nombres de personas reales**. No se relaja: ahí el contenido lo escriben terceros.
 
-## Personas reales en la programación (revisar cada tanto)
-| Segmento | Persona | Base pública | Notas |
-| --- | --- | --- | --- |
-| «Seamos serios» | Claudio «Chiqui» Tapia, presidente de la AFA | Una frase suya que se volvió meme ([nota de 442](https://442.perfil.com/noticias/futbol/seamos-serios-el-posteo-del-chiqui-tapia-contra-espana-que-termino-con-una-catarata-de-memes-en-su-contra.phtml)) | No se le atribuye nada nuevo. |
-| La toalla del palco | Claudio «Chiqui» Tapia | Video viral que él mismo explicó con humor ([El Marplatense](https://www.elmarplatense.com/chiqui-tapia-explico-el-video-viral-en-que-una-persona-le-seca-el-sudor)) | El chiste es de la toalla, no de él. |
-
-Las fuentes se buscaron en línea y varias tenían fechas desordenadas: antes de sumar un chiste con una persona real, verificar el dato en dos medios.
-Sin referencias a la causa por evasión fiscal ni a ningún tema judicial.
+## Personas reales en la programación
+Hoy no hay ninguna. Los dos segmentos con el presidente de la AFA (el meme de «seamos serios» y la toalla del palco) se retiraron por aburridos. Si en el futuro vuelve a entrar alguien, se anota acá con su base pública y su fuente, y se verifica en dos medios.
 
 ## Capusotto, Tinelli y otros referentes
 - Se puede nombrar a *Peter Capusotto y sus videos* como homenaje y escribir chistes **en su estilo**, pero no se copian sus sketches, canciones ni frases textuales (tienen derechos de autor).

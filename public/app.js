@@ -12,7 +12,7 @@ const cv = $('screen'), g = cv.getContext('2d');
 const vid = $('vid'), vid2 = $('vid2'), live = $('preview');
 
 const S = {
-  on: true, ch: 3, prevCh: 0, share: false, clip: null, wantHow: false, seenHow: false, deskBack: false, guide: false, filter: true, userNext: false, sinceMine: 0, order: [],
+  on: true, ch: 3, prevCh: 0, share: false, clip: null, wantHow: false, seenHow: false, deskBack: false, guide: false, filter: true, userNext: false, sinceMine: 0, sinceComm: 0, interleave: 3, recent: [], order: [],
   vol: 0.6, muted: false,
   mode: 'idle',                // idle | live | air
   config: { demo: true, tts: false },
@@ -114,26 +114,47 @@ async function prepareVoice(text) {
     S.ttsBuf = await S.ac.decodeAudioData(await r.arrayBuffer()); S.ttsText = text;
   } catch { S.ttsBuf = null; }
 }
-// Voz del navegador. Se recuerda por dónde iba (S.speech) para poder retomarla al des-silenciar o al cambiar el volumen.
-function speakFrom(text, startIdx = 0) {
+// Voz del navegador (respaldo cuando una noticia no tiene audio pregrabado). Se dice frase por frase: así un cambio de
+// volumen se nota en la frase siguiente sin repetir nada, y al des-silenciar se retoma desde el comienzo de la frase en curso.
+function speakFrom(text, startSentence = 0) {
   if (!('speechSynthesis' in window) || S.muted || !S.on) return;
-  const rest = text.slice(startIdx), sp = { text, idx: startIdx, done: !rest.trim(), stopping: false, vol: S.vol, air: S.air };
+  const parts = text.match(/[^.!?]+[.!?]*\s*/g) || [text];
+  const sp = { text, parts, i: startSentence, done: startSentence >= parts.length, stopping: false, air: S.air };
   S.speech = sp; if (sp.done) return;
-  const u = new SpeechSynthesisUtterance(rest), vs = speechSynthesis.getVoices();
+  const vs = ('speechSynthesis' in window && speechSynthesis.getVoices) ? speechSynthesis.getVoices() : [];
   const v = vs.find((x) => /es-AR/i.test(x.lang)) || vs.find((x) => /^es/i.test(x.lang));
-  if (v) u.voice = v;
-  u.lang = v ? v.lang : 'es-AR'; u.rate = 1.12; u.pitch = 0.85; u.volume = S.vol;
-  u.onboundary = (e) => { if (typeof e.charIndex === 'number') sp.idx = startIdx + e.charIndex; };
-  u.onend = () => { if (!sp.stopping) sp.done = true; };
-  speechSynthesis.cancel(); speechSynthesis.speak(u);
+  const next = () => {
+    if (S.speech !== sp || sp.stopping || S.muted || !S.on) return;
+    if (sp.i >= parts.length) { sp.done = true; return; }
+    const u = new SpeechSynthesisUtterance(parts[sp.i].trim());
+    if (v) u.voice = v;
+    u.lang = v ? v.lang : 'es-AR'; u.rate = 1.12; u.pitch = 0.85; u.volume = S.vol;     // el volumen se lee en cada frase
+    u.onend = () => { if (S.speech === sp && !sp.stopping) { sp.i++; next(); } };
+    speechSynthesis.speak(u);
+  };
+  speechSynthesis.cancel(); next();
 }
 const speakFallback = (text) => speakFrom(text, 0);
 function stopSpeech() { if (S.speech) S.speech.stopping = true; if (window.speechSynthesis) speechSynthesis.cancel(); }
-function resumeSpeechSoon() { clearTimeout(S.speechT); S.speechT = setTimeout(resumeSpeech, 220); }   // espera un poco por si se aprieta varias veces seguidas
+function resumeSpeechSoon() { clearTimeout(S.speechT); S.speechT = setTimeout(resumeSpeech, 220); }
 function resumeSpeech() {
-  const sp = S.speech;
-  if (!sp || sp.done || !S.on || S.muted || !S.air || S.air.cancel || S.air !== sp.air || S.air.rec) return;   // solo el segmento que sigue al aire
-  if (sp.stopping || sp.vol !== S.vol) speakFrom(sp.text, sp.idx);
+  const sp = S.speech;   // solo si se había cortado (mute) y sigue al aire el mismo segmento; un cambio de volumen NO reinicia la voz
+  if (!sp || sp.done || !sp.stopping || !S.on || S.muted || !S.air || S.air.cancel || S.air !== sp.air) return;
+  speakFrom(sp.text, sp.i);
+}
+
+// Voces pregrabadas (public/audio/<id>.mp3 + manifest.json; ver scripts/generar-voces.mjs). Pasan por la mezcla: el volumen y el mute
+// actúan en vivo, no se repite nada y la voz queda dentro de los clips que se graban. Sin audio, se usa la voz del navegador.
+const VOICES = { ids: new Set(), bufs: new Map() };
+const manifestReady = fetch('audio/manifest.json').then((r) => (r.ok ? r.json() : null)).then((m) => { if (m && Array.isArray(m.ids)) VOICES.ids = new Set(m.ids); }).catch(() => {});
+async function segVoice(seg) {
+  await manifestReady;   // la primera noticia al abrir la página arranca antes de que llegue la lista: hay que esperarla
+  if (!seg || !seg.id || !S.ac || !VOICES.ids.has(seg.id)) return null;
+  if (VOICES.bufs.has(seg.id)) return VOICES.bufs.get(seg.id);
+  try {
+    const r = await fetch(`audio/${seg.id}.mp3`); if (!r.ok) throw new Error('sin audio');
+    const buf = await S.ac.decodeAudioData(await r.arrayBuffer()); VOICES.bufs.set(seg.id, buf); return buf;
+  } catch { VOICES.ids.delete(seg.id); return null; }
 }
 
 /* ---------------- Encendido, canales, navegación ---------------- */
@@ -361,7 +382,10 @@ async function runAir(rec, seg) {
   const auto = !rec && mine && !clipFresh() && typeof MediaRecorder !== 'undefined', record = !!rec || auto;
   let buf = null;
   if (mine) { await prepareVoice(st.conductor); buf = S.ttsBuf; }
-  else if (seg.video && await loadVid2(seg.video)) { a.v2 = true; a.clipDur = Math.min(vid2.duration || 8, 20); }
+  else {
+    if (seg.video && await loadVid2(seg.video)) { a.v2 = true; a.clipDur = Math.min(vid2.duration || 8, 20); }
+    buf = await segVoice(seg);   // voz pregrabada si existe
+  }
   if (!a.cancel) {
     const words = st.conductor.split(/\s+/).length;
     a.intro = buf ? Math.max(4.5, buf.duration + 1) : Math.min(9, Math.max(4.5, words * 0.33 + 1.5));
@@ -402,11 +426,30 @@ async function stopAir() { if (S.air) S.air.cancel = true; if (S.airPromise) awa
 
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 // Canal 3: programación de relleno + todo lo aprobado. Canal 5: solo lo que mandó la comunidad (MCP y colaboraciones).
-const pool = () => (S.ch === 5 ? S.remote.filter((x) => x.source !== 'trend') : location.hash === '#clima' ? CLIMA.slice() : SEGMENTS.concat(CLIMA, S.remote));   // #clima = solo el canal del clima
+// Qué pasa con las noticias de la comunidad (las calcula el servidor según los votos, ver lib/ranking.js):
+//   canal 5 (Comunidad): todas las que están a prueba o destacadas, con más aire a las nuevas (para juntar votos) y a las bien votadas.
+//   canal 3: las originales de siempre, y cada N (por defecto 3) entra UNA destacada de la comunidad. Una noticia no llega al principal sin ganárselo.
+//   Las que la gente no banca el servidor las retira y dejan de aparecer.
+const origs = () => (location.hash === '#clima' ? CLIMA.slice() : SEGMENTS.concat(CLIMA));   // #clima = solo el canal del clima
+const tierOfSeg = (x) => x.tier || 'featured';
+const communityPool = () => S.remote.filter((x) => x.source !== 'trend');
+const featuredPool = () => (location.hash === '#clima' ? [] : S.remote.filter((x) => tierOfSeg(x) === 'featured'));
+const pool = () => (S.ch === 5 ? communityPool() : origs().concat(featuredPool()));
+function pickWeighted(list) {   // sorteo ponderado por «peso», sin repetir las últimas 3
+  if (!list.length) return null;
+  const fresh = list.filter((x) => !S.recent.includes(x.id)), base = fresh.length ? fresh : list;
+  let r = Math.random() * base.reduce((t, x) => t + (x.peso || 1), 0), pick = base[base.length - 1];
+  for (const x of base) { r -= x.peso || 1; if (r <= 0) { pick = x; break; } }
+  S.recent = [...S.recent, pick.id].slice(-3); return pick;
+}
 function nextSeg() {
   if (S.ch === 3 && ready() && (S.userNext || S.sinceMine >= 4)) { S.userNext = false; S.sinceMine = 0; return { mine: true }; }   // tu noticia sale primero y vuelve cada tanto
+  if (S.ch === 5) return pickWeighted(communityPool());
   if (S.ch === 3) S.sinceMine++;
-  if (!S.order.length) S.order = shuffle(pool().slice());
+  const feats = featuredPool();
+  if (S.ch === 3 && feats.length && S.sinceComm >= S.interleave) { S.sinceComm = 0; return pickWeighted(feats); }
+  S.sinceComm++;
+  if (!S.order.length) S.order = shuffle(origs());
   return S.order.pop() || null;
 }
 // Programación continua: segmento tras segmento con zapping (estática) en el medio.
@@ -422,7 +465,7 @@ async function startLoop() {
   }
 }
 async function loadRemote() {
-  try { const r = await fetch('/api/programacion'); if (!r.ok) return; const d = await r.json(); S.remote = d.segments || []; X.list = d.embeds || []; } catch { /* sin servidor: solo la programación de relleno */ }
+  try { const r = await fetch('/api/programacion'); if (!r.ok) return; const d = await r.json(); S.remote = d.segments || []; X.list = d.embeds || []; S.interleave = d.intercalado || 3; } catch { /* sin servidor: solo la programación de relleno */ }
 }
 $('btnAgain').onclick = () => { S.userNext = true; if (S.air) S.air.cancel = true; };   // salta al siguiente y pone la tuya primero
 // Clip de tu noticia: se identifica por su contenido; si editás algo, deja de valer y se vuelve a grabar.
@@ -819,7 +862,7 @@ function drawClima(t, seg) {
   g.save(); g.beginPath(); g.rect(30, 94, W - 60, 298); g.clip();
   const step = Math.floor(t / 0.9);
   if (c.pagina === 'pronostico') {
-    const im = icon(c.icono); if (im.complete) g.drawImage(im, W - 150, 112, 96, 92);
+    const im = icon(c.icono); if (im.complete && im.naturalWidth) g.drawImage(im, W - 150, 112, 96, 92);
     c.lineas.forEach((l, i) => {
       if (i > step) return;
       const y = 120 + i * 62; g.fillStyle = 'rgba(6,16,80,.78)'; g.fillRect(44, y - 24, W - 220, 50); g.fillStyle = RED; g.fillRect(44, y - 24, 6, 50);
@@ -828,7 +871,7 @@ function drawClima(t, seg) {
   } else {
     sTxt('AHORA', 130, 118, YEL, 15, 'center'); sTxt(c.temp, 130, 176, WHITE, 46, 'center', true);
     g.fillStyle = RED; g.fillRect(44, 190, 172, 30); sTxt(c.estado, 130, 212, WHITE, 15, 'center', false, 160);
-    const im = icon(c.icono); if (im.complete) g.drawImage(im, 82, 226, 96, 92);
+    const im = icon(c.icono); if (im.complete && im.naturalWidth) g.drawImage(im, 82, 226, 96, 92);
     sTxt(c.sensacion, 130, 338, SOFT, 12, 'center', false, 190);
     c.pares.forEach(([k, v], i) => { if (i > step) return; const y = 130 + i * 34; sTxt(k, 244, y, WHITE, 17); sTxt(v, W - 46, y, YEL, 14, 'right', false, 240); });
     if (step >= c.pares.length) { g.fillStyle = 'rgba(224,32,43,.28)'; g.fillRect(44, 346, W - 88, 38); g.fillStyle = RED; g.fillRect(44, 346, 6, 38); wrap(noAccent(c.alerta), W - 120, '12px Star4000').slice(0, 2).forEach((ln, i) => sTxt(ln, 60, 362 + i * 15, YEL, 12)); }
@@ -869,7 +912,7 @@ function drawPower() {   // tubo: colapso a una línea y a un punto / expansión
   return false;
 }
 
-function frame(now) {
+function drawFrame(now) {
   const t = now / 1000;
   g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
   let handled = false;
@@ -907,7 +950,11 @@ function frame(now) {
     } else drawIdle(t);
     if (S.filter) filter(t);
   }
+}
+// El siguiente cuadro se pide SIEMPRE, antes de dibujar: un error al dibujar (p. ej. una imagen que no cargó) no puede congelar la tele.
+function frame(now) {
   requestAnimationFrame(frame);
+  try { drawFrame(now); } catch (e) { if (!frame.avisado) { frame.avisado = true; console.error('Error al dibujar un cuadro (se sigue emitiendo):', e); } }
 }
 requestAnimationFrame(frame);
 

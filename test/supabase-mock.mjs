@@ -13,7 +13,7 @@ const mock = http.createServer(async (req, res) => {
   const send = (s, d) => { res.writeHead(s, { 'content-type': 'application/json' }); res.end(d === undefined ? '' : JSON.stringify(d)); };
   const okDirect = req.headers.apikey === KEY && req.headers.authorization === `Bearer ${KEY}`, okEdge = req.headers['x-store-token'] === TOKEN;
   if (EDGE ? !okEdge || req.headers.apikey : !okDirect) return send(401, { message: 'bad key' });   // en modo puente la app NO debe mandar la clave de servicio
-  const eqf = (rows) => rows.filter((r) => [...u.searchParams].every(([k, v]) => !v.startsWith('eq.') || String(r[k]) === v.slice(3)));
+  const eqf = (rows) => rows.filter((r) => [...u.searchParams].every(([k, v]) => v.startsWith('eq.') ? String(r[k]) === v.slice(3) : v.startsWith('in.(') ? v.slice(4, -1).split(',').includes(String(r[k])) : true));
   if (p === 'rpc/vote_cast') { const k = body.p_seg + '|' + body.p_voter; if (body.p_v === 0) votes.delete(k); else votes.set(k, body.p_v); return send(204); }
   if (p === 'rpc/vote_totals') { const t = {}; for (const [k, v] of votes) { const s = k.split('|')[0]; (t[s] ??= { seg_id: s, up: 0, down: 0 })[v === 1 ? 'up' : 'down']++; } return send(200, Object.values(t)); }
   if (p === 'rpc/presence_ping') { presence.add(body.p_id); return send(200, presence.size); }
@@ -39,17 +39,17 @@ let n = 0; const ok = (m) => console.log(`ok ${++n} - ${m}`);
 try {
   let r = await call('/api/mcp', { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }); assert.equal(r.json.result.serverInfo.name, 'pampa7-noticias'); ok('MCP por /api/mcp (ruta reescrita)');
   const good = { titular: 'Alarma en el edificio por un gato en el balcón', bajada: 'Vecinos se turnan para mirarlo. Él no se inmuta.', conductor: 'Atención, atención. Un gato se instaló en el balcón del segundo piso y mira la calle con autoridad. Los vecinos piden calma y yerba.', emoji: ['🐈'], autor: 'agus_dev' };
-  r = await tool('crear_noticia', good); assert.match(r.json.result.content[0].text, /pendiente/);
+  r = await tool('crear_noticia', good); assert.match(r.json.result.content[0].text, /revisión/);
   assert.equal(tables.segments.length, 1); const row = tables.segments[0];
   assert.equal(row.status, 'pending'); assert.equal(row.source, 'mcp'); assert.match(row.id, /^[0-9a-f-]{36}$/); assert.ok(row.created_at); assert.equal(row.data.titular, 'ALARMA EN EL EDIFICIO POR UN GATO EN EL BALCÓN'); assert.equal(row.data.autor, 'agus_dev');
   assert.equal(row.data.id, undefined); assert.equal(row.data.status, undefined); ok('crear_noticia guarda fila {id, source, status, created_at, data} en Supabase');
-  r = await tool('crear_noticia', { ...good, titular: 'Segundo gato exige su propio balcón' }); assert.match(r.json.result.content[0].text, /límite/); ok('límite diario vía RPC bump_limit');
+  r = await tool('crear_noticia', { ...good, titular: 'Lavarropas anuncia que no centrifugará los lunes', bajada: 'Dice que necesita un fin de semana largo para sí mismo.', conductor: 'Atención, atención. Un lavarropas del barrio comunicó que los lunes no piensa centrifugar nada. Sus dueños lo escucharon con respeto, tomaron mate y acordaron lavar a mano, por esta vez y sin precedentes.' }); assert.match(r.json.result.content[0].text, /límite/); ok('límite diario vía RPC bump_limit');
   r = await call('/api/admin?p=state'); assert.equal(r.status, 401);
   r = await call('/api/admin?p=state', null, 'secreto'); assert.equal(r.json.storage, 'supabase'); assert.equal(r.json.ephemeral, false); assert.equal(r.json.segments[0].titular, row.data.titular); assert.equal(r.json.segments[0].status, 'pending'); ok('admin por /api/admin?p=<ruta> (como lo reescribe vercel.json) con estado y almacenamiento supabase');
   r = await call('/api/programacion'); assert.equal(r.json.segments.length, 0); ok('pendiente no sale en la programación');
   r = await call(`/api/admin?p=segments/${row.id}/approve`, {}, 'secreto'); assert.equal(r.status, 200); assert.equal(tables.segments[0].status, 'approved');
   r = await call('/api/programacion'); assert.equal(r.json.segments.length, 1); assert.equal(r.json.segments[0].credito, 'Enviada por @agus_dev'); assert.match(r.headers.get('cache-control'), /s-maxage=30/); ok('aprobada sale con crédito y con caché de CDN');
-  assert.ok(log.some((l) => l.startsWith('GET segments?') && l.includes('status=eq.approved')), 'filtro status'); ok('consulta con filtro status=eq.approved');
+  assert.ok(log.some((l) => l.startsWith('GET segments?') && l.includes('status=in.(approved,pinned)')), 'filtro status'); ok('consulta con filtro status=in.(approved,pinned)');
   const before = log.length; r = await call('/api/admin?p=segments/no-es-uuid/approve', {}, 'secreto'); assert.equal(r.status, 404); assert.ok(!log.slice(before).some((l) => l.startsWith('PATCH')), 'no debe llegar a la base'); ok('id que no es UUID no llega a la base');
   r = await call('/api/admin?p=embeds', { url: 'https://x.com/alguien/status/1790000000000000001' }, 'secreto'); assert.equal(r.status, 200); assert.equal(tables.embeds[0].id, '1790000000000000001');
   r = await call('/api/admin?p=embeds', { url: 'https://x.com/alguien/status/1790000000000000001' }, 'secreto'); assert.equal(r.status, 409);

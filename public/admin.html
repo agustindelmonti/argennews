@@ -66,7 +66,9 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
       <label class="row" style="flex-direction:row;align-items:center;color:var(--ink)"><input type="checkbox" id="cPermiso" style="width:auto"> Tengo permiso del autor para emitir este material</label>
       <div class="row"><button class="g" id="btnColab">Publicar</button></div></section>
 
-    <section><h2>Aprobadas recientes</h2><div id="approved"></div></section>
+    <section><h2>Cartelera: en la programación y retiradas</h2>
+      <p class="meta">Las noticias de la comunidad entran <b>a prueba</b> (solo canal 5). Con votos suficientes y buen puntaje <b>suben al canal 3</b> y se intercalan entre las originales; si la gente las rechaza, <b>se retiran solas</b>. Las colaboraciones y las tendencias que aprobás van siempre destacadas. «Fijar» fuerza una destacada.</p>
+      <div id="approved"></div></section>
   </div>
 </main>
 <div id="toast" hidden></div>
@@ -79,10 +81,12 @@ async function api(path, body) {
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || r.status); return d;
 }
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const TIER = { featured: 'destacada (canal 3)', probation: 'a prueba (canal 5)', retired: 'retirada por votos' };
 function card(s, actions) {
-  return `<div class="item"><h3>${esc(s.emoji.join(' '))} ${esc(s.titular)}</h3>
-    <div class="meta"><span class="tag">${esc(s.source)}</span><span class="tag">${esc(s.etiqueta)}</span>${s.autor ? `<span class="tag">${esc(s.autor)}</span>` : ''}${s.tema ? `<span class="tag">tema: ${esc(s.tema)}</span>` : ''}${s.video ? '<span class="tag">video</span>' : ''}</div>
-    <div>${esc(s.bajada)}</div><div class="meta">${esc(s.conductor)}</div><div class="row">${actions}</div></div>`;
+  const r = s.source === 'mcp' && s.ranking ? s.ranking : null, an = s.analisis;
+  return `<div class="item"${r && r.tier === 'retired' ? ' style="opacity:.55"' : ''}><h3>${esc(s.emoji.join(' '))} ${esc(s.titular)}</h3>
+    <div class="meta">${r && s.status !== 'pending' ? `<span class="tag" style="color:${r.tier === 'featured' ? 'var(--ok)' : r.tier === 'retired' ? '#ff8a92' : 'var(--ink)'}">${s.status === 'pinned' ? 'fijada · ' : ''}${esc(TIER[r.tier])}</span><span class="tag">👍 ${r.up} · 👎 ${r.down} · puntaje ${(r.lb * 100).toFixed(0)}</span>` : ''}<span class="tag">${esc(s.source)}</span><span class="tag">${esc(s.etiqueta)}</span>${s.autor ? `<span class="tag">${esc(s.autor)}</span>` : ''}${s.tema ? `<span class="tag">tema: ${esc(s.tema)}</span>` : ''}${s.video ? '<span class="tag">video</span>' : ''}</div>
+    <div>${esc(s.bajada)}</div><div class="meta">${esc(s.conductor)}</div>${an ? `<div class="meta">Análisis: ${an.puntaje}/100${an.humor != null ? ` · humor IA ${an.humor}/10` : ''}${an.moderacion ? ` · moderación ${esc(an.moderacion)}` : ''} · ${esc((an.senales || []).join(' · '))}</div>` : ''}<div class="row">${actions}</div></div>`;
 }
 async function renderRank(st) {
   const rows = new Map();
@@ -97,9 +101,11 @@ async function load() {
   const st = await api('/state');
   renderRank(st);
   $('login').hidden = true; $('app').hidden = false; $('storageWarn').hidden = !st.ephemeral;
-  const pend = st.segments.filter((s) => s.status === 'pending'), appr = st.segments.filter((s) => s.status === 'approved').slice(0, 20);
+  const orden = { featured: 0, probation: 1, retired: 2 };
+  const pend = st.segments.filter((s) => s.status === 'pending').sort((a, b) => (b.analisis?.puntaje || 0) - (a.analisis?.puntaje || 0)),   // las mejor puntuadas primero
+    appr = st.segments.filter((s) => s.status === 'approved' || s.status === 'pinned').sort((a, b) => (orden[a.ranking.tier] - orden[b.ranking.tier]) || (b.ranking.lb - a.ranking.lb)).slice(0, 60);
   $('pending').innerHTML = pend.length ? pend.map((s) => card(s, `<button class="g" data-a="approve" data-id="${s.id}">Aprobar</button><button class="d" data-a="reject" data-id="${s.id}">Rechazar</button>`)).join('') : '<p class="meta">No hay nada pendiente.</p>';
-  $('approved').innerHTML = appr.map((s) => card(s, `<button class="d" data-a="delete" data-id="${s.id}">Quitar</button>`)).join('') || '<p class="meta">Todavía no hay.</p>';
+  $('approved').innerHTML = appr.map((s) => card(s, `${s.source === 'mcp' ? (s.status === 'pinned' ? `<button data-a="approve" data-id="${s.id}">Quitar de fijadas</button>` : `<button class="p" data-a="pin" data-id="${s.id}">Fijar como destacada</button>`) : ''}<button class="d" data-a="delete" data-id="${s.id}">Quitar</button>`)).join('') || '<p class="meta">Todavía no hay.</p>';
   $('embeds').innerHTML = st.embeds.map((e) => `<div class="item row"><a href="${esc(e.url)}" target="_blank" rel="noopener" style="color:#7aa2ff">${esc(e.id)}</a><button class="d" data-embed="${esc(e.id)}">Quitar</button></div>`).join('') || '<p class="meta">Sin tweets todavía.</p>';
   $('btnGen').disabled = !st.ai;
 }
