@@ -33,7 +33,7 @@ Pruebas: `npm test` (servidor local y modo Vercel + Supabase simulado). Crédito
 1. **Supabase:** creá un proyecto y ejecutá `supabase/schema.sql` en el SQL Editor (crea las tablas con RLS activado y sin políticas: solo el servidor accede).
 2. **Vercel:** importá el repo (sin framework; `vercel.json` ya define `public/` como salida, las rutas `/mcp` y `/admin/api/*`, y la función `api/[...path].js`).
 3. **Variables de entorno** (Settings → Environment Variables):
-   `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (clave *service_role*), `ADMIN_TOKEN` (largo y aleatorio), `ANTHROPIC_API_KEY`,
+   `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` o `SUPABASE_SERVICE_ROLE_KEY` (clave *service_role*; la integración Supabase de Vercel la inyecta sola), `ADMIN_TOKEN` (largo y aleatorio), `ANTHROPIC_API_KEY`,
    y opcionalmente `AUTO_APPROVE=1`, `OPENAI_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_MODEL_CHEAP` y los límites.
 4. **Probalo:** `https://TU-PROYECTO.vercel.app/` es el televisor, `/admin.html` el panel y `/mcp` el servidor MCP.
 5. **MCP público:** ChatGPT y Claude llaman a `/mcp` desde sus servidores, así que usá el dominio de producción y revisá que *Deployment Protection* no lo bloquee.
