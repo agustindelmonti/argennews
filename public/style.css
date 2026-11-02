@@ -51,13 +51,41 @@ textarea{resize:none}
 .rb.power{background:linear-gradient(#e0202b,#9c1019);color:#fff;font-size:clamp(16px,2.4vmin,22px)}
 .rb.on{background:linear-gradient(#ffd400,#c9a600);color:#1a1400}
 
+#sheet{display:none}
+
+/* ---- Celular en vertical: TV a lo ancho, panel del canal con texto normal y controles grandes abajo ---- */
 @media (max-aspect-ratio:1/1){
-  #set{flex-direction:column;gap:12px;justify-content:center}
-  #tv{flex:none;width:100%;height:auto;container-type:normal;display:block}
-  #cabinet{width:100%}
-  #remote{flex-direction:row;flex-wrap:wrap;width:100%;justify-content:center;max-height:none;overflow:visible}
-  .rb{flex:1 1 56px;padding:10px 2px}
+  #set{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:0;padding:0}
+  #tv{flex:none;width:100%;height:auto;container-type:normal;display:block;padding:max(6px,env(safe-area-inset-top,0px)) 8px 0}
+  #cabinet{width:100%;padding:6px;border-radius:14px}
   #osd{font-size:max(10px,3.3cqw)}
+  #msg{font-size:1.1em}
+
+  #sheet{display:block;flex:1 1 0;min-height:0;overflow:auto;padding:10px max(12px,env(safe-area-inset-left,0px)) 10px max(12px,env(safe-area-inset-right,0px));font-size:16px;line-height:1.4;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  #sheet:not(:has(.page:not([hidden]),#pAir:not([hidden]),#pComBar:not([hidden])))::before{content:"En el aire. Cambiá de canal con CH ▲▼ o abrí la guía con MENÚ.";display:block;color:#9aa3bd;text-align:center;padding:14px 8px}
+  #sheet .page{position:static;inset:auto;overflow:visible;margin:0 0 10px;padding:14px;border-width:2px;box-shadow:none;border-radius:10px;font-size:16px;text-shadow:none}
+  #sheet .page h2{font-size:15px}
+  #sheet .osd-btn{font-size:15px;padding:11px 14px;border-width:2px;min-height:44px;text-shadow:none;border-radius:8px}
+  #sheet .osd-btn:focus-visible,#sheet input:focus-visible,#sheet textarea:focus-visible{outline-width:3px;outline-offset:2px}
+  #sheet input:not([type=checkbox]),#sheet textarea{font-size:16px;padding:9px 10px;border-width:1px}
+  #sheet label{font-size:13px}
+  #sheet .check input{width:22px;height:22px}
+  #sheet .check span{font-size:14px}
+  #sheet .grid{grid-template-columns:1fr}
+  #sheet #pAir,#sheet #pComBar{position:static;flex-direction:row;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+  #sheet #pAir .osd-btn,#sheet #pComBar .osd-btn{font-size:15px;padding:11px 14px}
+  #sheet #guide .osd-btn{font-size:15px}
+  #sheet #guide small{font-size:12px}
+  #sheet #xBox{flex:none;height:min(58dvh,520px)}
+
+  #remote{flex:none;width:100%;max-height:none;overflow:visible;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px max(10px,env(safe-area-inset-bottom,0px));border-radius:16px 16px 0 0}
+  .rb{min-height:46px;padding:10px 2px;font-size:13px}
+}
+/* Teléfono apaisado: TV a la izquierda y controles en columna; los menús quedan dentro de la pantalla */
+@media (max-height:480px) and (min-aspect-ratio:1/1){
+  #set{padding:6px}
+  #remote{width:84px;gap:5px;padding:6px}
+  .rb{min-height:34px;padding:6px 2px;font-size:11px}
 }
 /* Mientras se graba con la cámara, la pantalla muestra solo la imagen en vivo y el botón de detener. */
 #pCam.clear{background:transparent;border:0;box-shadow:none;display:flex;flex-direction:column;justify-content:flex-end;pointer-events:none}
@@ -76,3 +104,21 @@ textarea{resize:none}
 #pComBar .osd-btn{font-size:.72em;padding:.25em .6em}
 #pHow{z-index:3;inset:8% 7% 14%}
 #pHow label{margin:.4em 0}
+
+/* Tipografía del sketch del clima (Lucy's Local on the 8's, MIT) */
+@font-face{font-family:'Star4000';src:url('assets/fonts/Star4000.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Star4000 Large';src:url('assets/fonts/Star4000-Large.ttf') format('truetype');font-display:swap}
+#iconPool{position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:.01;pointer-events:none}
+
+/* ---- Cómo participar: botones de instalación del MCP ---- */
+#pHow .lead{margin:.2em 0 .3em;font-weight:700}
+#pHow a.osd-btn{text-decoration:none}
+#pHow .warn{border-left:.5cqw solid var(--yel);padding-left:.7em;color:var(--yel)}
+.steps{background:#0007;border-left:.5cqw solid var(--yel);padding:.5em .9em;margin:.2em 0 .8em;font-size:.9em}
+.steps p{margin:0 0 .4em}
+.steps pre{margin:0;white-space:pre-wrap;word-break:break-all;font:inherit;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85em;color:var(--yel);text-shadow:none;user-select:all}
+@media (max-aspect-ratio:1/1){
+  #sheet #pHow a.osd-btn{display:inline-flex;align-items:center}
+  #sheet #pHow .warn,#sheet .steps{border-left-width:4px}
+  #sheet .steps{font-size:14px}
+}

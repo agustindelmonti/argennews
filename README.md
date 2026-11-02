@@ -22,7 +22,12 @@ Tu noticia entra primero y vuelve a salir cada 4 segmentos. Teclas: `P` encender
 - **Tendencias:** en el admin traés los temas del día (RSS de Google Trends, Argentina), la IA los convierte en situaciones ficticias saltando personas, política y temas sensibles, y queda pendiente de tu aprobación.
 - **Colaboraciones:** desde el admin cargás un segmento con crédito y, si querés, un link https a un video del que tengas permiso.
 
-Prueba del backend: `node test/smoke.mjs`.
+- **Canal del clima:** sketches con la tipografía y los íconos de Star4000, repintados con la paleta del noticiero. `/#clima` muestra solo esos segmentos.
+- **Instalar el MCP:** en el canal 5, «Cómo participar» tiene botones para Claude, ChatGPT, Gemini CLI, Cursor, Claude Code y otros. Copian el link o el comando y abren la página de cada herramienta. Necesitás una URL pública con https.
+
+Celular: en vertical la TV ocupa el ancho y los menús pasan a un panel debajo; en apaisado quedan dentro de la pantalla.
+
+Prueba del backend: `node test/smoke.mjs`. Créditos de terceros: `THIRD_PARTY.md`.
 
 ## Cómo funciona
 - `public/app.js`: todo el render va a un `<canvas>`; la vista previa y la descarga usan el mismo pipeline

@@ -39,3 +39,37 @@ export const SEGMENTS = [
     conductor: 'Una exclusiva de este canal. En el fondo de la heladera hay un tupper que nadie reconoce. Está tapado y tiene una etiqueta ilegible. Los empleados evitan mirarlo. El tupper, según dicen, también.',
     ticker: ['Expertos recomiendan no abrirlo', 'El olor ya tiene su propia opinión', 'Se evalúa una misa'], emoji: ['🥡', '🧊'], bg: ['#16314d', '#6ec1d8'] },
 ];
+
+// Sketches del clima: pantallas estilo Star4000 (kind: 'clima'). Tipografía e íconos de "Lucy's Local on the 8's" (ver THIRD_PARTY.md).
+// clima.pagina: 'actuales' (temperatura + pares etiqueta/valor) o 'pronostico' (líneas); icono: current/<nombre> o moon/<nombre>.
+export const CLIMA = [
+  { kind: 'clima', etiqueta: 'EL CLIMA', titular: 'CONDICIONES ACTUALES', bajada: 'Con nuestro meteorólogo de guardia.', movil: 'Estación Pampa',
+    conductor: 'Pasamos al clima, con nuestro meteorólogo de guardia. Hoy el cielo anda con ganas de opinar: sol, nubes y un viento con intenciones.',
+    ticker: ['ALERTA: SE ESPERA UN FIN DE SEMANA LARGO EN LA CABEZA DE TODOS'], emoji: ['☀️'], bg: ['#1b6ef3', '#7ad3ff'],
+    clima: { pagina: 'actuales', ciudad: 'VILLA CRESPO', icono: 'current/sunny', temp: '24°C', estado: 'Soleado (con dudas)', sensacion: 'SENSACIÓN: LA DE SIEMPRE',
+      pares: [['Viento:', 'Del Noreste, con intenciones'], ['Humedad:', 'Pegajosa'], ['Presión:', 'Alta (la del lunes)'], ['Visibilidad:', 'Hasta la esquina'], ['Paraguas:', 'Llevalo igual']],
+      alerta: 'AVISO: PROBABILIDAD DE EXCUSA PARA NO SALIR, 100%' } },
+  { kind: 'clima', etiqueta: 'EL CLIMA', titular: 'PRONÓSTICO LOCAL', bajada: 'Cuatro días, cero compromisos.', movil: 'Estación Pampa',
+    conductor: 'Y ahora el pronóstico para los próximos días. Les adelanto que va a haber clima, en distintas cantidades y a distintas horas. El meteorólogo no se hace responsable.',
+    ticker: ['AVISO: SI EL PRONÓSTICO FALLA, REVISE EL CALENDARIO'], emoji: ['☁️'], bg: ['#1b6ef3', '#7ad3ff'],
+    clima: { pagina: 'pronostico', ciudad: 'VILLA CRESPO', icono: 'current/cloud',
+      lineas: ['AHORA...NUBLADO. TEMPERATURA 19°C. SENSACIÓN: ZAPATILLAS.', '20 HS...30% DE LLUVIA. DEPENDE DE SI LAVASTE EL AUTO.', 'MAÑANA...SOLEADO. MÁXIMA 27°C. TODOS DIRÁN QUE HACE CALOR.', 'EXTENDIDO...VARIABLE, COMO EL HUMOR DE UN LUNES.'] } },
+  { kind: 'clima', etiqueta: 'EL CLIMA', titular: 'ALERTA POR LLOVIZNA DRAMÁTICA', bajada: 'Cae el agua justo cuando salís.', movil: 'Estación Pampa',
+    conductor: 'Atención, atención. Se aproxima una llovizna que, según los especialistas, se va a largar justo cuando llegue la gente a la parada. Es pura casualidad, aunque nadie lo cree.',
+    ticker: ['AVISO: EL PARAGUAS ESTÁ EN CASA, COMO SIEMPRE'], emoji: ['🌧️'], bg: ['#0b1f4d', '#5a7bd8'],
+    clima: { pagina: 'actuales', ciudad: 'CABALLITO', icono: 'current/rain', temp: '17°C', estado: 'Llovizna con malicia', sensacion: 'SENSACIÓN: MEDIAS MOJADAS',
+      pares: [['Lluvia hoy:', '2 mm, bien repartidos'], ['Charcos:', 'Justo en el cordón'], ['Techos:', 'Todos ocupados'], ['Pelo:', 'No hay nada que hacer'], ['Ánimo:', 'Entre gris y gris']],
+      alerta: 'AVISO: AL SALIR, DIGA EN VOZ ALTA "ESTÁ POR LLOVER"' } },
+  { kind: 'clima', etiqueta: 'EL CLIMA', titular: 'TORMENTA: LOS GATOS YA LO SABÍAN', bajada: 'Se refugian debajo de la cama.', movil: 'Estación Pampa',
+    conductor: 'Último momento meteorológico: se acerca una tormenta eléctrica. Los gatos ya estaban enterados y, por las dudas, nos miran con cara de que avisaron.',
+    ticker: ['AVISO: NO SE RECOMIENDA DISCUTIR CON UN RAYO'], emoji: ['⛈️'], bg: ['#050510', '#3a3a8a'],
+    clima: { pagina: 'actuales', ciudad: 'FLORES', icono: 'current/storm', temp: '21°C', estado: 'Tormenta, con efectos', sensacion: 'SENSACIÓN: DE PELÍCULA',
+      pares: [['Truenos:', 'Solo los dramáticos'], ['Rayos:', 'A discreción'], ['Gatos:', 'Bajo la cama'], ['Wifi:', 'Se fue a dormir'], ['Paciencia:', 'En baja']],
+      alerta: 'AVISO: SE SUGIERE MIRAR LA TORMENTA DESDE LA VENTANA, CON MATE' } },
+  { kind: 'clima', etiqueta: 'EL CLIMA', titular: 'FASE LUNAR: LLENA, Y SE NOTA', bajada: 'Efectos visibles en vecinos y perros.', movil: 'Estación Pampa',
+    conductor: 'Y para cerrar, la fase lunar. Esta noche tenemos luna llena y se nota. Los perros ladran por las dudas y los poetas del barrio están insoportables.',
+    ticker: ['AVISO: NO MANDE ESE MENSAJE BAJO LA LUNA LLENA'], emoji: ['🌕'], bg: ['#2a0a5e', '#8a2be2'],
+    clima: { pagina: 'actuales', ciudad: 'BARRIO NORTE', icono: 'moon/full', temp: '14°C', estado: 'Luna llena y despejado', sensacion: 'SENSACIÓN: ROMÁNTICA, A VECES',
+      pares: [['Mareas:', 'Las de siempre'], ['Perros:', 'Ladrando por las dudas'], ['Poetas:', 'Insoportables'], ['Gatos:', 'En los techos'], ['Sueño:', 'No hay']],
+      alerta: 'AVISO: LA LUNA NO ES UNA LAMPARITA, NO LA APAGUE' } },
+];

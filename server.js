@@ -29,7 +29,7 @@ const AUTO_APPROVE = env('AUTO_APPROVE', '') === '1';
 const DATA_DIR = env('DATA_DIR', join(ROOT, 'data'));
 const DB_FILE = join(DATA_DIR, 'db.json');
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.gif': 'image/gif', '.ttf': 'font/ttf', '.txt': 'text/plain; charset=utf-8' };
 
 /* ---------------- Límites diarios en memoria (producción: Redis/Supabase) ---------------- */
 function limiter(perIp, global) {

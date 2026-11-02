@@ -1,7 +1,7 @@
 // Pampa 7 Noticias — un televisor. Cada canal es una función de la app:
 //   1 Cámara · 2 Redacción · 3 Pampa 7 (tu noticia al aire) · 4 Estudio (ajustes)
 // El noticiero se dibuja en un <canvas>; la vista previa y la descarga usan el mismo pipeline.
-import { SEGMENTS } from './seed.js';
+import { SEGMENTS, CLIMA } from './seed.js';
 const W = 640, H = 480;
 const MAX_CLIP = 12;
 const NCH = 6;
@@ -50,7 +50,12 @@ function ensureAudio() {
   ac.createMediaElementSource(vid).connect(S.mix);
   applyVolume();
 }
-function applyVolume() { if (S.mon) S.mon.gain.value = !S.on || S.muted ? 0 : S.vol * S.vol; }
+function applyVolume() {
+  const silent = !S.on || S.muted;
+  if (S.mon) S.mon.gain.value = silent ? 0 : S.vol * S.vol;
+  vid2.muted = silent; vid2.volume = S.vol;                                  // video de colaboración (no pasa por WebAudio)
+  if (silent && window.speechSynthesis) speechSynthesis.cancel();            // la voz del navegador no se puede bajar a mitad de frase
+}
 function setVol(d) { S.vol = Math.min(1, Math.max(0, Math.round((S.vol + d) * 10) / 10)); if (S.muted && d > 0) S.muted = false; applyVolume(); volOsd(); }
 function toggleMute() { S.muted = !S.muted; applyVolume(); volOsd(); }
 
@@ -105,6 +110,7 @@ function renderPages() {
   if (S.ch === 6) enterX();
 }
 function focusFirst(id) {
+  if (matchMedia('(pointer: coarse)').matches) return;   // en el celular no abrimos el teclado solos
   const el = $(id).querySelector('button:not([disabled]),input:not([hidden]):not([disabled]),label.osd-btn');
   if (el && el.focus) setTimeout(() => el.focus({ preventScroll: true }), 30);
 }
@@ -117,7 +123,7 @@ function setChannel(n, silent) {
   S.ch = n; S.guide = false; S.loopId++; S.order = []; S.how = false;
   if (S.air) S.air.cancel = true;
   if (!silent) { S.staticUntil = performance.now() + 380; blip(660, 0.12); }
-  badge(); renderPages();
+  badge(); renderPages(); $('sheet').scrollTop = 0;
   if (n === 3) startLoop();
   if (n === 5) loadRemote().then(() => { if (S.ch !== 5 || S.guide) return; if (!pool().length) { S.how = true; renderPages(); } else startLoop(); });
 }
@@ -277,7 +283,7 @@ async function runAir(rec, seg) {
   ensureAudio();
   const mine = !!seg.mine;
   const st = mine ? story() : { ...seg, movil: seg.credito || seg.movil, ticker: (seg.ticker?.length ? seg.ticker : ['Pampa 7 Noticias, informando desde siempre']).join('   ◆   ') };
-  const a = { cancel: false, start: Infinity, intro: 0, total: 0, st, mine, seg, clipDur: mine ? S.clipDur : 4, v2: false, clipStarted: false, done: null };
+  const a = { cancel: false, start: Infinity, intro: 0, total: 0, st, mine, seg, clipDur: mine ? S.clipDur : seg.kind === 'clima' ? 8 : 4, v2: false, clipStarted: false, done: null };
   S.air = a; S.mode = 'air'; if (rec) S.busy = true;
   let buf = null;
   if (mine) { await prepareVoice(st.conductor); buf = S.ttsBuf; }
@@ -321,7 +327,7 @@ async function stopAir() { if (S.air) S.air.cancel = true; if (S.airPromise) awa
 
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 // Canal 3: programación de relleno + todo lo aprobado. Canal 5: solo lo que mandó la comunidad (MCP y colaboraciones).
-const pool = () => (S.ch === 5 ? S.remote.filter((x) => x.source !== 'trend') : SEGMENTS.concat(S.remote));
+const pool = () => (S.ch === 5 ? S.remote.filter((x) => x.source !== 'trend') : location.hash === '#clima' ? CLIMA.slice() : SEGMENTS.concat(CLIMA, S.remote));   // #clima = solo el canal del clima
 function nextSeg() {
   if (S.ch === 3 && ready() && (S.userNext || S.sinceMine >= 4)) { S.userNext = false; S.sinceMine = 0; return { mine: true }; }   // tu noticia sale primero y vuelve cada tanto
   if (S.ch === 3) S.sinceMine++;
@@ -351,10 +357,44 @@ $('btnDl').onclick = async () => {
   if (S.ch === 3 && S.on) startLoop();
 };
 
-/* ---------------- Canal 5: cómo participar ---------------- */
+/* ---------------- Canal 5: cómo participar (instalar el MCP en cada asistente) ---------------- */
+const mcpUrl = () => location.origin + '/mcp';
+// Pasos verificados contra la documentación de cada producto; cambian seguido, por eso se avisa en pantalla.
+const CLIENTS = [
+  { name: 'Claude', href: 'https://claude.ai/settings/connectors', copy: mcpUrl,
+    text: 'Pegá este link en Claude: Personalizar → Conectores → «Agregar conector personalizado». Sin autenticación. Después pedile que mande tu noticia.' },
+  { name: 'ChatGPT', href: 'https://chatgpt.com/', copy: mcpUrl,
+    text: 'En ChatGPT: Ajustes → Conectores → Ajustes avanzados → activá el Modo desarrollador. Creá un conector nuevo, poné «Pampa 7» como nombre, pegá este link y elegí «Sin autenticación». Depende de tu plan.' },
+  { name: 'Gemini CLI', href: 'https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md', copy: () => `gemini mcp add --transport http pampa7 ${mcpUrl()}`,
+    text: 'Pegá este comando en tu terminal, reiniciá Gemini CLI y revisá con /mcp. (La app web de Gemini: no confirmamos que acepte servidores propios.)' },
+  { name: 'Cursor', href: () => `cursor://anysphere.cursor-deeplink/mcp/install?name=pampa7&config=${encodeURIComponent(btoa(JSON.stringify({ url: mcpUrl() })))}`, copy: mcpUrl,
+    text: 'Se abre Cursor y te pide confirmar la instalación. Si no pasa nada, agregá este link a mano en Ajustes → MCP.' },
+  { name: 'Claude Code', copy: () => `claude mcp add --transport http pampa7 ${mcpUrl()}`,
+    text: 'Pegá este comando en tu terminal y listo.' },
+  { name: 'Otro', copy: mcpUrl,
+    text: 'Cualquier cliente MCP que admita servidores remotos por HTTP: agregá este link como servidor nuevo.' },
+];
+function renderHow() {
+  $('mcpUrl').value = mcpUrl();
+  $('howWarn').hidden = location.protocol === 'https:';
+  const box = $('howBtns'); box.innerHTML = '';
+  CLIENTS.forEach((c) => {
+    const href = typeof c.href === 'function' ? c.href() : c.href;
+    const el = document.createElement(href ? 'a' : 'button');
+    el.className = 'osd-btn'; el.textContent = c.name;
+    if (href) { el.href = href; if (/^https?:/.test(href)) { el.target = '_blank'; el.rel = 'noopener noreferrer'; } }
+    el.addEventListener('click', async () => {
+      const snippet = c.copy(); let ok = false;
+      try { await navigator.clipboard.writeText(snippet); ok = true; } catch { /* sin permiso de portapapeles */ }
+      $('howText').textContent = (ok ? 'Copiado. ' : 'Copialo a mano. ') + c.text; $('howCode').textContent = snippet; $('howSteps').hidden = false;
+      if (ok) say('Copiado al portapapeles.', 2000);
+    });
+    box.appendChild(el);
+  });
+}
+renderHow();
 $('btnHow').onclick = () => { S.how = !S.how; renderPages(); };
 $('btnHowClose').onclick = () => { S.how = false; renderPages(); };
-$('mcpUrl').value = location.origin + '/mcp';
 $('btnCopy').onclick = async () => { try { await navigator.clipboard.writeText($('mcpUrl').value); say('Link copiado.'); } catch { $('mcpUrl').select(); say('Copialo con Ctrl+C.'); } };
 
 /* ---------------- Canal 6: tweets elegidos (embeds oficiales de X) ---------------- */
@@ -395,6 +435,18 @@ async function enterX() {
 }
 $('xPrev').onclick = () => stepX(-1); $('xNext').onclick = () => stepX(1);
 addEventListener('resize', () => { if (S.ch === 6) fitX(); });
+
+/* ---------------- Celular en vertical: la pantalla muestra solo la imagen y los menús van en un panel debajo ---------------- */
+const mqPortrait = matchMedia('(max-aspect-ratio: 1/1)');
+const PANELS = ['pCam', 'pDesk', 'pAir', 'pX', 'pComBar', 'pHow', 'pStudio', 'pGuide'];
+function placePanels() {
+  const target = mqPortrait.matches ? $('sheet') : $('osd');
+  PANELS.forEach((id) => target.appendChild($(id)));
+  document.body.classList.toggle('portrait', mqPortrait.matches);
+  setTimeout(() => S.ch === 6 && fitX(), 60);
+}
+mqPortrait.addEventListener('change', placePanels);
+placePanels();
 
 /* ---------------- Canal 4: Estudio ---------------- */
 $('optFilter').onchange = (e) => { S.filter = e.target.checked; };
@@ -504,6 +556,62 @@ function drawBroll(t, seg) {   // fondo animado con emojis para segmentos sin vi
   });
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
+/* ---- Sketch del clima (estética Star4000) ---- */
+// Los GIF viven en el DOM (dentro de #iconPool) para que sigan animados cuando se dibujan en el canvas.
+const ICONS = {};
+function icon(name) {
+  if (!ICONS[name]) { const im = new Image(); im.src = `assets/weather/${name}.gif`; $('iconPool').appendChild(im); ICONS[name] = im; }
+  return ICONS[name];
+}
+['current/sunny', 'current/cloud', 'current/rain', 'current/storm', 'moon/full'].forEach(icon);
+if (document.fonts) { document.fonts.load('24px Star4000'); document.fonts.load('24px "Star4000 Large"'); }
+const noAccent = (t) => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // la fuente Star4000 no trae tildes ni ñ
+function sTxt(text, x, y, color = '#f4f0d5', size = 18, align = 'left', large = false, maxW = 0) {
+  text = noAccent(text); const fam = large ? '"Star4000 Large"' : 'Star4000';
+  g.font = `${size}px ${fam}, Impact, Arial, sans-serif`;
+  if (maxW) while (g.measureText(text).width > maxW && size > 9) { size -= 1; g.font = `${size}px ${fam}, Impact, Arial, sans-serif`; }
+  g.textAlign = align; g.textBaseline = 'alphabetic';
+  g.fillStyle = '#050510'; g.fillText(text, x + 2, y + 2); g.fillStyle = color; g.fillText(text, x, y);
+}
+function drawClima(t, seg) {
+  // Misma paleta que el noticiero: azul marino y azul, rojo, amarillo y blanco. De Star4000 quedan la tipografía y los íconos.
+  const NAVY = '#061050', BLUE = '#1b4fd8', RED = '#e0202b', YEL = '#ffd400', WHITE = '#ffffff', SOFT = '#cfd8ff';
+  const c = seg.clima;
+  g.fillStyle = NAVY; g.fillRect(0, 0, W, H);
+  const hd = g.createLinearGradient(0, 0, W, 0); hd.addColorStop(0, '#0a1e5c'); hd.addColorStop(1, BLUE);
+  g.fillStyle = hd; g.fillRect(16, 24, W - 32, 62); g.fillStyle = RED; g.fillRect(16, 82, W - 32, 4);
+  logo(26, 34, 1.15); sTxt('EL CLIMA', 86, 62, WHITE, 20, 'left', true);                          // logo P7 del canal
+  sTxt(seg.titular, 200, 56, YEL, 24, 'left', true, 300); sTxt(c.ciudad, 200, 76, SOFT, 13);
+  const d = new Date(); sTxt(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`, W - 30, 54, WHITE, 18, 'right');
+  const pn = g.createLinearGradient(0, 94, W, 392); pn.addColorStop(0, '#071a55'); pn.addColorStop(1, BLUE);   // mismo degradé que el estudio
+  g.fillStyle = pn; g.fillRect(30, 94, W - 60, 298);
+  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
+  for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(W - 110, 150, 40 + i * 38, 0, 7); g.stroke(); }
+  g.save(); g.beginPath(); g.rect(30, 94, W - 60, 298); g.clip();
+  const step = Math.floor(t / 0.9);
+  if (c.pagina === 'pronostico') {
+    const im = icon(c.icono); if (im.complete) g.drawImage(im, W - 150, 112, 96, 92);
+    c.lineas.forEach((l, i) => {
+      if (i > step) return;
+      const y = 120 + i * 62; g.fillStyle = 'rgba(6,16,80,.78)'; g.fillRect(44, y - 24, W - 220, 50); g.fillStyle = RED; g.fillRect(44, y - 24, 6, 50);
+      wrap(noAccent(l), W - 250, '17px Star4000').slice(0, 2).forEach((ln, j) => sTxt(ln, 62, y - 2 + j * 22, WHITE, 17));
+    });
+  } else {
+    sTxt('AHORA', 130, 118, YEL, 15, 'center'); sTxt(c.temp, 130, 176, WHITE, 46, 'center', true);
+    g.fillStyle = RED; g.fillRect(44, 190, 172, 30); sTxt(c.estado, 130, 212, WHITE, 15, 'center', false, 160);
+    const im = icon(c.icono); if (im.complete) g.drawImage(im, 82, 226, 96, 92);
+    sTxt(c.sensacion, 130, 338, SOFT, 12, 'center', false, 190);
+    c.pares.forEach(([k, v], i) => { if (i > step) return; const y = 130 + i * 34; sTxt(k, 244, y, WHITE, 17); sTxt(v, W - 46, y, YEL, 14, 'right', false, 240); });
+    if (step >= c.pares.length) { g.fillStyle = 'rgba(224,32,43,.28)'; g.fillRect(44, 346, W - 88, 38); g.fillStyle = RED; g.fillRect(44, 346, 6, 38); wrap(noAccent(c.alerta), W - 120, '12px Star4000').slice(0, 2).forEach((ln, i) => sTxt(ln, 60, 362 + i * 15, YEL, 12)); }
+  }
+  g.restore();
+  g.fillStyle = WHITE; g.fillRect(16, 398, W - 32, 2); g.fillStyle = '#0a0a0a'; g.fillRect(16, 400, W - 32, 44);    // barra de ticker como la del noticiero
+  g.fillStyle = BLUE; g.fillRect(16, 400, 128, 44); sTxt(c.pagina === 'pronostico' ? 'LOCAL' : 'AHORA', 80, 430, WHITE, 20, 'center', true);
+  g.save(); g.beginPath(); g.rect(150, 400, W - 180, 44); g.clip();
+  const tk = noAccent(seg.ticker?.[0] || '').toUpperCase(); g.font = '16px Star4000, Arial, sans-serif'; const tw = g.measureText(tk).width;
+  sTxt(tk, W - 30 - ((t * 70) % (tw + W)), 428, YEL, 16); g.restore();
+  g.textAlign = 'left';
+}
 function drawSnow() {
   for (let i = 0; i < sd.data.length; i += 4) { const v = Math.random() * 255; sd.data[i] = sd.data[i + 1] = sd.data[i + 2] = v; sd.data[i + 3] = 255; }
   sx.putImageData(sd, 0, 0); g.imageSmoothingEnabled = false; g.drawImage(snow, 0, 0, W, H); g.imageSmoothingEnabled = true;
@@ -556,8 +664,9 @@ function frame(now) {
         } else if (a.v2) {   // video de una colaboración con permiso
           if (!a.clipStarted) { a.clipStarted = true; vid2.currentTime = 0; vid2.muted = S.muted; vid2.volume = S.vol; vid2.play().catch(() => { vid2.muted = true; vid2.play().catch(() => {}); }); }
           if (vid2.videoWidth) cover(vid2, vid2.videoWidth, vid2.videoHeight);
-        } else drawBroll(el - a.intro, a.seg);
-        drawOverlay(el - a.intro, a.st);
+        } else if (a.seg.kind === 'clima') drawClima(el - a.intro, a.seg);
+        else drawBroll(el - a.intro, a.seg);
+        if (!(a.seg.kind === 'clima' && !a.v2)) drawOverlay(el - a.intro, a.st);
       } else if (el < a.total) {
         drawStudio(el, a.st, null);
         g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 190, W, 90); g.fillStyle = '#fff'; g.textAlign = 'center';

@@ -62,6 +62,7 @@
             <div class="row"><button class="osd-btn" id="btnFull">⛶ Pantalla completa</button></div>
             <p class="note">Próximamente: canal comunidad con las noticias de otros espectadores y formatos de noticiero (policiales, farándula, deportes).</p>
             <p class="note">Pampa 7 Noticias es un canal ficticio de humor. Cualquier parecido con la realidad es pura coincidencia.</p>
+            <p class="note">Tipografía e íconos del clima: «Lucy's Local on the 8's» (licencia MIT), usados con permiso de su autor.</p>
           </section>
 
           <section class="page" id="pX" hidden aria-label="Canal 6, Tweets">
@@ -74,11 +75,14 @@
           <div id="pComBar" hidden><button class="osd-btn" id="btnHow">ℹ Cómo participar</button></div>
           <section class="page" id="pHow" hidden aria-label="Cómo mandar tu noticia">
             <h2>Mandá tu noticia desde tu IA</h2>
-            <p>Conectá tu asistente (ChatGPT, Claude u otro con soporte MCP) a este canal y pedile: <i>«Mandá a Pampa 7 una noticia sobre mi gato que no quiere bajar del ropero»</i>.</p>
-            <p>Tu asistente la escribe con sus propios tokens y la envía. Si pasa la moderación, sale en los canales 5 y 3.</p>
+            <p>Conectá tu asistente a este canal y pedile: <i>«Mandá a Pampa 7 una noticia sobre mi gato que no quiere bajar del ropero»</i>. Tu asistente la escribe con sus propios tokens, la envía y, si pasa la moderación, sale en los canales 5 y 3.</p>
+            <p class="note warn" id="howWarn" hidden>Ahora estás en una dirección local o sin https. Claude y ChatGPT necesitan una URL pública con https para conectarse.</p>
+            <p class="lead">Elegí tu asistente:</p>
+            <div class="row" id="howBtns"></div>
+            <div id="howSteps" class="steps" hidden><p id="howText"></p><pre id="howCode"></pre></div>
             <label>Servidor MCP<input id="mcpUrl" readonly></label>
             <div class="row"><button class="osd-btn" id="btnCopy">Copiar link</button><button class="osd-btn" id="btnHowClose">Cerrar</button></div>
-            <p class="note">ChatGPT: Ajustes → Apps y conectores → modo desarrollador → agregar servidor MCP (depende de tu plan). Claude: Ajustes → Conectores → conector personalizado. Sin login, con límite diario.</p>
+            <p class="note">Sin login y con límite diario. Los pasos de cada app cambian seguido: si no ves una opción, buscala en la ayuda de tu plan.</p>
           </section>
 
           <section class="page" id="pGuide" hidden aria-label="Guía de canales">
@@ -98,6 +102,8 @@
     </div>
   </div>
 
+  <div id="sheet" role="region" aria-label="Panel del canal"></div>
+
   <nav id="remote" aria-label="Controles del televisor">
     <button class="rb power" data-act="power" aria-label="Encender o apagar" title="Encender / apagar (P)">⏻</button>
     <button class="rb" data-act="guide" title="Guía de canales (G)">MENÚ</button>
@@ -110,6 +116,7 @@
   </nav>
 </div>
 <video id="vid" playsinline preload="auto" hidden></video>
+<div id="iconPool" aria-hidden="true"></div>
 <video id="vid2" playsinline preload="auto" hidden></video>
 <video id="preview" muted playsinline hidden></video>
 <script type="module" src="app.js"></script>
