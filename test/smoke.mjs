@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import assert from 'node:assert/strict';
 
 const PORT = 4990 + Math.floor(Math.random() * 9), DIR = mkdtempSync(join(tmpdir(), 'p7-'));
-const srv = spawn('node', ['server.js'], { env: { ...process.env, PORT, DATA_DIR: DIR, ADMIN_TOKEN: 'secreto', ANTHROPIC_API_KEY: '', MCP_LIMIT_PER_IP: '2' }, stdio: 'ignore' });
+const srv = spawn('node', ['server.js'], { env: { ...process.env, PORT, DATA_DIR: DIR, ADMIN_TOKEN: 'secreto', ANTHROPIC_API_KEY: '', MCP_LIMIT_PER_IP: '3' }, stdio: 'ignore' });
 const base = `http://localhost:${PORT}`;
 for (let i = 0; i < 40; i++) { try { await fetch(base + '/api/config'); break; } catch { await new Promise((r) => setTimeout(r, 100)); } }
 const call = async (path, body, token, method = body ? 'POST' : 'GET', extra = {}) => { const r = await fetch(base + path, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}), ...extra }, body: body ? JSON.stringify(body) : undefined }); const t = await r.text(); return { status: r.status, json: t ? JSON.parse(t) : null }; };
@@ -28,6 +28,14 @@ try {
     r = await rpc('tools/call', { name: 'crear_noticia', arguments: bad }); assert.equal(r.json.result.isError, true, why);
   }
   ok('rechaza política real, links y datos incompletos');
+  // Famosos del espectáculo/deporte/medios: se pueden nombrar, pero SIEMPRE quedan en revisión y marcados; la política y los fallecidos siguen bloqueados.
+  const famoso = { ...good, titular: 'Lionel Messi se queja de que el mate llegó frío', bajada: 'Pidió hablar con el termo. El termo no declaró.', conductor: 'Atención, atención. Se supo que Lionel Messi, en pleno asado de domingo, descubrió que el mate llegó frío. Dicen las malas lenguas que el termo ya pidió un abogado, y que la yerba pide no ser involucrada.' };
+  r = await rpc('tools/call', { name: 'crear_noticia', arguments: famoso }); assert.ok(!r.json.result.isError, 'famoso permitido'); assert.match(r.json.result.content[0].text, /nombra a una persona/);
+  r = await call('/admin/api/state', null, 'secreto'); assert.equal(r.json.segments.find((x) => x.titular.includes('MESSI')).analisis.nombra, true); ok('famoso permitido, marcado y en revisión manual');
+  for (const mal of ['Maradona vuelve a la cancha en un partido muy gracioso para todos.', 'Hoy Trump y Biden se pelearon por el último alfajor del kiosco.']) {
+    r = await rpc('tools/call', { name: 'crear_noticia', arguments: { ...good, titular: 'Escándalo con nombre propio en el kiosco', conductor: 'Atención, atención. ' + mal + ' Los vecinos miran todo desde la vereda con asombro.' } }); assert.equal(r.json.result.isError, true, mal);
+  }
+  ok('fallecidos y política partidaria siguen bloqueados');
   r = await rpc('tools/call', { name: 'crear_noticia', arguments: { ...good, titular: 'Lavarropas anuncia que no centrifugará los lunes', bajada: 'Dice que necesita un fin de semana largo para sí mismo.', conductor: 'Atención, atención. Un lavarropas del barrio comunicó que los lunes no piensa centrifugar nada. Sus dueños lo escucharon con respeto, tomaron mate y acordaron lavar a mano, por esta vez y sin precedentes.' } }); assert.match(r.json.result.content[0].text, /revisión/);
   r = await rpc('tools/call', { name: 'crear_noticia', arguments: { ...good, titular: 'Heladera exige que no le abran la puerta de noche', bajada: 'Asegura que el flan ya no tiene secretos para nadie.', conductor: 'Atención, atención. Una heladera se declaró en huelga de luces y pide que nadie la abra de madrugada. Los vecinos de la casa evalúan su pedido mientras miran, por las dudas, la cocina a oscuras.' } }); assert.match(r.json.result.content[0].text, /límite/); ok('límite diario por IP (solo cuentan las válidas)');
 

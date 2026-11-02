@@ -16,7 +16,10 @@ Los chistes se refinan de a poco. Esta guía fija qué entra y qué no, para que
 
 ## Dónde vive cada cosa
 - `public/seed.js`: programación de relleno, curada a mano. **Acá sí pueden aparecer personas públicas**, bajo las reglas de arriba.
-- Canal 5 (comunidad por MCP) y tendencias: el filtro de `lib/app.js` **bloquea nombres de personas reales**. No se relaja: ahí el contenido lo escriben terceros.
+- Canal 5 (comunidad por MCP): **se pueden nombrar famosos del espectáculo, el deporte y los medios**, con tono un poco más picante y humor negro leve, pero solo en situaciones evidentemente absurdas (una caricatura, nunca una noticia que parezca verdadera). Todo lo que nombra a alguien **pasa siempre por revisión manual** (nunca se auto-aprueba) y aparece marcado «NOMBRA A ALGUIEN» en `/admin.html`.
+  - **Siguen bloqueados** (filtro de `lib/app.js` + moderación con IA): política partidaria y electoral, personas fallecidas, acusaciones o delitos sobre alguien real, tragedias y crímenes reales, sexo, menores, violencia contra alguien real, odio, burlas al cuerpo/edad/salud/familia/vida privada, personas no famosas, frases inventadas como si fueran reales.
+  - Humor negro permitido: la muerte en abstracto, el fin del mundo, velorios absurdos, la resignación. No: víctimas, suicidio, enfermedades reales.
+- Tendencias del admin: siguen sin nombrar personas.
 
 ## Personas reales en la programación
 - **Mirtha Legrand** (segmento «La mesa de Mirtha Legrand…»): figura histórica de la TV, tono cariñoso. El chiste es sobre el *formato* (la mesa, la vajilla, la lista de espera), no sobre su edad, su salud ni frases inventadas. Se escribe «Mirtha», con h.

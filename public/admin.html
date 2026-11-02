@@ -86,7 +86,7 @@ function card(s, actions) {
   const r = s.source === 'mcp' && s.ranking ? s.ranking : null, an = s.analisis;
   return `<div class="item"${r && r.tier === 'retired' ? ' style="opacity:.55"' : ''}><h3>${esc(s.emoji.join(' '))} ${esc(s.titular)}</h3>
     <div class="meta">${r && s.status !== 'pending' ? `<span class="tag" style="color:${r.tier === 'featured' ? 'var(--ok)' : r.tier === 'retired' ? '#ff8a92' : 'var(--ink)'}">${s.status === 'pinned' ? 'fijada · ' : ''}${esc(TIER[r.tier])}</span><span class="tag">👍 ${r.up} · 👎 ${r.down} · puntaje ${(r.lb * 100).toFixed(0)}</span>` : ''}<span class="tag">${esc(s.source)}</span><span class="tag">${esc(s.etiqueta)}</span>${s.autor ? `<span class="tag">${esc(s.autor)}</span>` : ''}${s.tema ? `<span class="tag">tema: ${esc(s.tema)}</span>` : ''}${s.video ? '<span class="tag">video</span>' : ''}</div>
-    <div>${esc(s.bajada)}</div><div class="meta">${esc(s.conductor)}</div>${an ? `<div class="meta">Análisis: ${an.puntaje}/100${an.humor != null ? ` · humor IA ${an.humor}/10` : ''}${an.moderacion ? ` · moderación ${esc(an.moderacion)}` : ''} · ${esc((an.senales || []).join(' · '))}</div>` : ''}<div class="row">${actions}</div></div>`;
+    <div>${esc(s.bajada)}</div><div class="meta">${esc(s.conductor)}</div>${an ? `<div class="meta">Análisis: ${an.puntaje}/100${an.humor != null ? ` · humor IA ${an.humor}/10` : ''}${an.moderacion ? ` · moderación ${esc(an.moderacion)}` : ''}${an.nombra ? ' · <b style="color:#ffb347">NOMBRA A ALGUIEN: revisá que sea una caricatura absurda, sin acusaciones</b>' : ''} · ${esc((an.senales || []).join(' · '))}</div>` : ''}<div class="row">${actions}</div></div>`;
 }
 async function renderRank(st) {
   const rows = new Map();
