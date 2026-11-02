@@ -407,8 +407,9 @@ function toolIcon(name) {
   svg.appendChild(path); return svg;
 }
 const CLIENTS = [
-  { name: 'Claude', icon: 'claude', href: 'https://claude.ai/settings/connectors', copy: mcpUrl,
-    text: 'Pegá este link en Claude: Personalizar → Conectores → «Agregar conector personalizado». Sin autenticación. Después pedile que mande tu noticia.' },
+  // Link de instalación documentado por Anthropic: abre «Agregar conector personalizado» con nombre y URL ya cargados; la persona solo confirma.
+  { name: 'Claude', icon: 'claude', href: () => `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=${encodeURIComponent('Pampa 7 Noticias')}&connectorUrl=${encodeURIComponent(mcpUrl())}`, copy: mcpUrl,
+    text: 'Se abre Claude con el nombre y el link ya cargados: revisalos y confirmá. Si no se abre, pegá el link en Personalizar → Conectores → «Agregar conector personalizado».' },
   { name: 'ChatGPT', icon: 'openai', href: 'https://chatgpt.com/', copy: mcpUrl,
     text: 'En ChatGPT: Ajustes → Conectores → Ajustes avanzados → activá el Modo desarrollador. Creá un conector nuevo, poné «Pampa 7» como nombre, pegá este link y elegí «Sin autenticación». Depende de tu plan.' },
   { name: 'Gemini CLI', icon: 'gemini', href: 'https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md', copy: () => `gemini mcp add --transport http pampa7 ${mcpUrl()}`,
