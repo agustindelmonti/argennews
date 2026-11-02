@@ -27,7 +27,18 @@ Tu noticia entra primero y vuelve a salir cada 4 segmentos. Teclas: `P` encender
 
 Celular: en vertical la TV ocupa el ancho y los menús pasan a un panel debajo; en apaisado quedan dentro de la pantalla.
 
-Prueba del backend: `node test/smoke.mjs`. Créditos de terceros: `THIRD_PARTY.md`.
+Pruebas: `npm test` (servidor local y modo Vercel + Supabase simulado). Créditos de terceros: `THIRD_PARTY.md`.
+
+## Deploy en Vercel
+1. **Supabase:** creá un proyecto y ejecutá `supabase/schema.sql` en el SQL Editor (crea las tablas con RLS activado y sin políticas: solo el servidor accede).
+2. **Vercel:** importá el repo (sin framework; `vercel.json` ya define `public/` como salida, las rutas `/mcp` y `/admin/api/*`, y la función `api/[...path].js`).
+3. **Variables de entorno** (Settings → Environment Variables):
+   `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (clave *service_role*), `ADMIN_TOKEN` (largo y aleatorio), `ANTHROPIC_API_KEY`,
+   y opcionalmente `AUTO_APPROVE=1`, `OPENAI_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_MODEL_CHEAP` y los límites.
+4. **Probalo:** `https://TU-PROYECTO.vercel.app/` es el televisor, `/admin.html` el panel y `/mcp` el servidor MCP.
+5. **MCP público:** ChatGPT y Claude llaman a `/mcp` desde sus servidores, así que usá el dominio de producción y revisá que *Deployment Protection* no lo bloquee.
+
+Sin Supabase el panel muestra un aviso: en Vercel el archivo local es temporal y se pierde. Los límites diarios también viven en Supabase (función `bump_limit`).
 
 ## Cómo funciona
 - `public/app.js`: todo el render va a un `<canvas>`; la vista previa y la descarga usan el mismo pipeline

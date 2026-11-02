@@ -122,3 +122,14 @@ textarea{resize:none}
   #sheet #pHow .warn,#sheet .steps{border-left-width:4px}
   #sheet .steps{font-size:14px}
 }
+
+/* Acciones de la redacción: en la pantalla de la TV quedan fijas al pie del panel, en una sola fila compacta */
+.actions{position:sticky;bottom:-.9em;display:flex;flex-wrap:wrap;gap:.5em;margin:.5em -1.3em -.9em;padding:.7em 1.3em .9em;background:linear-gradient(rgba(6,16,80,0),#061050 35%)}
+.actions .osd-btn{font-size:.68em;padding:.3em .65em}
+/* En el celular el panel ya scrollea: las acciones van al final del formulario, con botones grandes */
+#sheet .actions{position:static;margin:12px 0 0;padding:0;background:none}
+#sheet .actions .osd-btn{font-size:15px;padding:11px 14px}
+
+/* Íconos de las herramientas en los botones de instalación */
+#pHow .osd-btn{display:inline-flex;align-items:center}
+.osd-btn .ico{width:1.2em;height:1.2em;margin-right:.5em;flex:none}

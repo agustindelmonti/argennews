@@ -32,6 +32,7 @@ label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--mut)
     <div class="row"><input id="token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" style="max-width:320px"><button class="p" id="btnLogin">Entrar</button></div></section>
 
   <div id="app" hidden>
+    <section id="storageWarn" hidden style="border-color:var(--red)"><h2 style="color:#ff8a92">Almacenamiento temporal</h2><p class="meta" style="margin:0">Estás en Vercel guardando en un archivo temporal: las noticias, los tweets y los límites se pierden. Configurá <b>SUPABASE_URL</b> y <b>SUPABASE_SERVICE_KEY</b> (ver README) y volvé a desplegar.</p></section>
     <section><h2>Pendientes de aprobación</h2><div id="pending"></div></section>
 
     <section><h2>Tweets del canal 6 (embeds oficiales)</h2>
@@ -80,7 +81,7 @@ function card(s, actions) {
 }
 async function load() {
   const st = await api('/state');
-  $('login').hidden = true; $('app').hidden = false;
+  $('login').hidden = true; $('app').hidden = false; $('storageWarn').hidden = !st.ephemeral;
   const pend = st.segments.filter((s) => s.status === 'pending'), appr = st.segments.filter((s) => s.status === 'approved').slice(0, 20);
   $('pending').innerHTML = pend.length ? pend.map((s) => card(s, `<button class="g" data-a="approve" data-id="${s.id}">Aprobar</button><button class="d" data-a="reject" data-id="${s.id}">Rechazar</button>`)).join('') : '<p class="meta">No hay nada pendiente.</p>';
   $('approved').innerHTML = appr.map((s) => card(s, `<button class="d" data-a="delete" data-id="${s.id}">Quitar</button>`)).join('') || '<p class="meta">Todavía no hay.</p>';

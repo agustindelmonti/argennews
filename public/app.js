@@ -12,7 +12,7 @@ const cv = $('screen'), g = cv.getContext('2d');
 const vid = $('vid'), vid2 = $('vid2'), live = $('preview');
 
 const S = {
-  on: true, ch: 3, guide: false, filter: true, userNext: false, sinceMine: 0, order: [],
+  on: true, ch: 3, prevCh: 0, deskBack: false, guide: false, filter: true, userNext: false, sinceMine: 0, order: [],
   vol: 0.6, muted: false,
   mode: 'idle',                // idle | live | air
   config: { demo: true, tts: false },
@@ -45,7 +45,8 @@ function volOsd() {
 function ensureAudio() {
   if (S.ac) { S.ac.resume(); return; }
   const ac = new (window.AudioContext || window.webkitAudioContext)();
-  S.ac = ac; S.mix = ac.createGain(); S.mon = ac.createGain(); S.dest = ac.createMediaStreamDestination();
+  S.ac = ac; S.mix = ac.createGain(); S.mon = ac.createGain(); S.fx = ac.createGain(); S.dest = ac.createMediaStreamDestination();
+  S.fx.connect(ac.destination);   // efectos del televisor: suenan aunque esté apagado, respetan volumen y mute, no entran en la grabación
   S.mix.connect(S.dest); S.mix.connect(S.mon); S.mon.connect(ac.destination);
   ac.createMediaElementSource(vid).connect(S.mix);
   applyVolume();
@@ -53,6 +54,7 @@ function ensureAudio() {
 function applyVolume() {
   const silent = !S.on || S.muted;
   if (S.mon) S.mon.gain.value = silent ? 0 : S.vol * S.vol;
+  if (S.fx) S.fx.gain.value = S.muted ? 0 : Math.max(0.08, S.vol * S.vol);
   vid2.muted = silent; vid2.volume = S.vol;                                  // video de colaboración (no pasa por WebAudio)
   if (silent && window.speechSynthesis) speechSynthesis.cancel();            // la voz del navegador no se puede bajar a mitad de frase
 }
@@ -71,11 +73,30 @@ function sting(at) {
     o.connect(gn); gn.connect(S.mix); o.start(t0); o.stop(t0 + len + 0.05);
   });
 }
+function noiseBuf(sec) { const b = S.ac.createBuffer(1, Math.floor(S.ac.sampleRate * sec), S.ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+// Sonido de televisor de tubo. Encendido: golpe grave de desmagnetización, chillido agudo que sube y estática.
+// Apagado: barrido descendente, soplido, "pop" y un silbido que se apaga.
+function crtSound(on) {
+  const ac = S.ac; if (!ac || !S.fx) return; const t = ac.currentTime;
+  const tone = (type, f0, f1, t0, dur, peak, attack = 0.01) => {
+    const o = ac.createOscillator(), g2 = ac.createGain(); o.type = type;
+    o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime(peak, t0 + attack); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g2); g2.connect(S.fx); o.start(t0); o.stop(t0 + dur + 0.05);
+  };
+  const hiss = (t0, dur, peak, hp) => {
+    const n = ac.createBufferSource(), f = ac.createBiquadFilter(), g2 = ac.createGain(); n.buffer = noiseBuf(dur); f.type = 'highpass'; f.frequency.value = hp;
+    g2.gain.setValueAtTime(peak, t0); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    n.connect(f); f.connect(g2); g2.connect(S.fx); n.start(t0);
+  };
+  if (on) { tone('sine', 95, 42, t, 0.55, 0.55, 0.008); tone('sine', 1800, 4300, t + 0.05, 0.6, 0.05, 0.2); hiss(t, 0.5, 0.12, 1500); tone('sine', 3900, 3900, t + 0.5, 0.35, 0.02, 0.05); }
+  else { tone('sawtooth', 1500, 60, t, 0.32, 0.12, 0.01); hiss(t, 0.14, 0.09, 3000); tone('sine', 75, 28, t + 0.3, 0.16, 0.4, 0.005); tone('sine', 3800, 3800, t, 0.55, 0.03, 0.02); }
+}
 function blip(freq = 880, len = 0.08) {   // beep del control remoto (solo parlantes, no entra en la grabación)
   if (!S.ac || !S.on) return;
   const o = S.ac.createOscillator(), gn = S.ac.createGain(), t = S.ac.currentTime;
   o.type = 'square'; o.frequency.value = freq; gn.gain.setValueAtTime(0.05, t); gn.gain.exponentialRampToValueAtTime(0.0001, t + len);
-  o.connect(gn); gn.connect(S.mon); o.start(t); o.stop(t + len + 0.02);
+  o.connect(gn); gn.connect(S.fx); o.start(t); o.stop(t + len + 0.02);
 }
 async function prepareVoice(text) {
   if (!S.config.tts || !text) { S.ttsBuf = null; return; }
@@ -105,6 +126,7 @@ function renderPages() {
   if (S.guide) { show('pGuide', true); focusFirst('pGuide'); return; }
   if (PAGES[S.ch]) { show(PAGES[S.ch], true); focusFirst(PAGES[S.ch]); }
   if (S.ch === 3) show('pAir', ready());
+  if (S.ch === 1) $('btnNext').hidden = !(S.clipDur > 0);
   if (S.ch === 2) refreshDesk();
   if (S.ch === 5) { show('pComBar', true); if (S.how) { show('pHow', true); focusFirst('pHow'); } }
   if (S.ch === 6) enterX();
@@ -120,6 +142,7 @@ function setChannel(n, silent) {
   if (!S.on || guardBusy()) return;
   if (S.mode === 'live') { say('Detené la grabación antes de cambiar de canal.'); return; }
   n = ((n - 1 + NCH) % NCH) + 1;
+  if (n !== S.ch) S.prevCh = S.ch;
   S.ch = n; S.guide = false; S.loopId++; S.order = []; S.how = false;
   if (S.air) S.air.cancel = true;
   if (!silent) { S.staticUntil = performance.now() + 380; blip(660, 0.12); }
@@ -135,7 +158,8 @@ function power() {
   S.on = !S.on; S.loopId++;
   if (S.air) S.air.cancel = true;
   S.pwr = { type: S.on ? 'on' : 'off', at: performance.now() };
-  if (S.on) { S.guide = false; S.ch = 3; S.staticUntil = performance.now() + 500; ensureAudio(); setTimeout(() => { badge(); blip(1200, 0.15); }, 450); startLoop(); }
+  ensureAudio(); crtSound(S.on);
+  if (S.on) { S.guide = false; S.ch = 3; S.staticUntil = performance.now() + 500; setTimeout(badge, 450); startLoop(); }
   else { vid.pause(); window.speechSynthesis && speechSynthesis.cancel(); ['chbadge', 'volbar', 'msg'].forEach((i) => ($(i).hidden = true)); }
   applyVolume(); renderPages();
 }
@@ -157,6 +181,7 @@ addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   const map = { p: 'power', g: 'guide', m: 'mute', f: 'full', '+': 'volup', '=': 'volup', '-': 'voldn', arrowright: 'volup', arrowleft: 'voldn', arrowup: 'chup', arrowdown: 'chdn' };
   if (k === 'escape' && S.guide) { toggleGuide(); return; }
+  if ((k === 'escape' || k === 'backspace') && S.prevCh && S.on) { setChannel(S.prevCh); e.preventDefault(); return; }   // volver al canal anterior
   if (/^[1-6]$/.test(k)) { ensureAudioSoft(); setChannel(Number(k)); e.preventDefault(); return; }
   if (map[k]) { ensureAudioSoft(); ACT[map[k]](); e.preventDefault(); }
 });
@@ -190,7 +215,7 @@ $('file').onchange = (e) => { const f = e.target.files[0]; if (f) { ensureAudio(
 const seek = (t) => new Promise((res) => { vid.onseeked = () => { vid.onseeked = null; res(); }; vid.currentTime = t; });
 async function loadClip(blob) {
   say('Cargando tu video…');
-  S.clipDur = 0; S.story = null;
+  S.clipDur = 0; S.story = null; S.deskBack = false;
   vid.src = URL.createObjectURL(blob);
   const ok = await new Promise((res) => { vid.onloadedmetadata = () => res(true); vid.onerror = () => res(false); });
   if (!ok) { say('No pude leer ese video. Probá con otro.', 4500); return; }
@@ -202,17 +227,22 @@ async function loadClip(blob) {
   S.clipDur = Math.min(vid.duration || 0, MAX_CLIP);
   if (!S.clipDur) { say('El video parece vacío.'); return; }
   await seek(0);
-  $('camInfo').textContent = `Video listo: ${S.clipDur.toFixed(1)} s.`;
+  $('camInfo').textContent = `Video listo: ${S.clipDur.toFixed(1)} s.`; $('btnNext').hidden = false;
   say('¡Video cargado! Pasamos a la redacción.', 2500);
   setTimeout(() => S.ch === 1 && !S.guide && setChannel(2), 900);
 }
 
 /* ---------------- Canal 2: Redacción ---------------- */
 function refreshDesk() {
-  const has = S.clipDur > 0, form = !!S.story;
+  const has = S.clipDur > 0, form = !!S.story && !S.deskBack;
   $('deskEmpty').hidden = has; $('deskGen').hidden = !has || form; $('deskForm').hidden = !form;
+  $('btnContinue').hidden = !S.story;                    // hay una noticia ya escrita a la que volver
   $('btnGen').disabled = !$('consent').checked;
 }
+$('btnBackCam').onclick = () => setChannel(1);
+$('btnBackGen').onclick = () => { S.deskBack = true; refreshDesk(); focusFirst('deskGen'); };
+$('btnContinue').onclick = () => { S.deskBack = false; refreshDesk(); focusFirst('deskForm'); };
+$('btnNext').onclick = () => setChannel(2);
 $('consent').onchange = () => { $('btnGen').disabled = !$('consent').checked; };
 
 async function grabFrames(n = 5) {
@@ -249,7 +279,7 @@ async function generate() {
     if (!ok) { say(d.error + (d.motivo ? ` (${d.motivo})` : ''), 5000); refreshDesk(); $('btnRegen').disabled = false; return; }
     $('fEtiqueta').value = d.etiqueta; $('fMovil').value = d.movil; $('fTitular').value = d.titular;
     $('fBajada').value = d.bajada; $('fConductor').value = d.conductor;
-    S.story = { ticker: d.ticker };
+    S.story = { ticker: d.ticker }; S.deskBack = false;
     if (S.config.demo === false && S.config.tts === false) $('hint').textContent = 'Sin voz TTS en el servidor: la voz se oye pero no queda en el archivo.';
     say('¡Noticia lista! Ajustá lo que quieras y salí al aire.', 3500);
   } catch (e) { say('Se cortó la transmisión. Probá de nuevo.'); console.error(e); }
@@ -360,18 +390,34 @@ $('btnDl').onclick = async () => {
 /* ---------------- Canal 5: cómo participar (instalar el MCP en cada asistente) ---------------- */
 const mcpUrl = () => location.origin + '/mcp';
 // Pasos verificados contra la documentación de cada producto; cambian seguido, por eso se avisa en pantalla.
+// Íconos de las herramientas (Simple Icons, dominio público CC0; las marcas son de sus dueños y se usan solo para indicar compatibilidad). Ver THIRD_PARTY.md.
+const TOOL_ICONS = {
+  claude: "m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z",
+  openai: "M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z",
+  gemini: "M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81",
+  cursor: "M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23",
+  link: { stroke: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1' },   // genérico (propio)
+};
+function toolIcon(name) {
+  const ic = TOOL_ICONS[name]; if (!ic) return null;
+  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'), path = document.createElementNS(NS, 'path');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'ico');
+  if (typeof ic === 'string') { svg.setAttribute('fill', 'currentColor'); path.setAttribute('d', ic); }
+  else { svg.setAttribute('fill', 'none'); path.setAttribute('d', ic.stroke); path.setAttribute('stroke', 'currentColor'); path.setAttribute('stroke-width', '2.2'); path.setAttribute('stroke-linecap', 'round'); }
+  svg.appendChild(path); return svg;
+}
 const CLIENTS = [
-  { name: 'Claude', href: 'https://claude.ai/settings/connectors', copy: mcpUrl,
+  { name: 'Claude', icon: 'claude', href: 'https://claude.ai/settings/connectors', copy: mcpUrl,
     text: 'Pegá este link en Claude: Personalizar → Conectores → «Agregar conector personalizado». Sin autenticación. Después pedile que mande tu noticia.' },
-  { name: 'ChatGPT', href: 'https://chatgpt.com/', copy: mcpUrl,
+  { name: 'ChatGPT', icon: 'openai', href: 'https://chatgpt.com/', copy: mcpUrl,
     text: 'En ChatGPT: Ajustes → Conectores → Ajustes avanzados → activá el Modo desarrollador. Creá un conector nuevo, poné «Pampa 7» como nombre, pegá este link y elegí «Sin autenticación». Depende de tu plan.' },
-  { name: 'Gemini CLI', href: 'https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md', copy: () => `gemini mcp add --transport http pampa7 ${mcpUrl()}`,
+  { name: 'Gemini CLI', icon: 'gemini', href: 'https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md', copy: () => `gemini mcp add --transport http pampa7 ${mcpUrl()}`,
     text: 'Pegá este comando en tu terminal, reiniciá Gemini CLI y revisá con /mcp. (La app web de Gemini: no confirmamos que acepte servidores propios.)' },
-  { name: 'Cursor', href: () => `cursor://anysphere.cursor-deeplink/mcp/install?name=pampa7&config=${encodeURIComponent(btoa(JSON.stringify({ url: mcpUrl() })))}`, copy: mcpUrl,
+  { name: 'Cursor', icon: 'cursor', href: () => `cursor://anysphere.cursor-deeplink/mcp/install?name=pampa7&config=${encodeURIComponent(btoa(JSON.stringify({ url: mcpUrl() })))}`, copy: mcpUrl,
     text: 'Se abre Cursor y te pide confirmar la instalación. Si no pasa nada, agregá este link a mano en Ajustes → MCP.' },
-  { name: 'Claude Code', copy: () => `claude mcp add --transport http pampa7 ${mcpUrl()}`,
+  { name: 'Claude Code', icon: 'claude', copy: () => `claude mcp add --transport http pampa7 ${mcpUrl()}`,
     text: 'Pegá este comando en tu terminal y listo.' },
-  { name: 'Otro', copy: mcpUrl,
+  { name: 'Otro', icon: 'link', copy: mcpUrl,
     text: 'Cualquier cliente MCP que admita servidores remotos por HTTP: agregá este link como servidor nuevo.' },
 ];
 function renderHow() {
@@ -381,7 +427,7 @@ function renderHow() {
   CLIENTS.forEach((c) => {
     const href = typeof c.href === 'function' ? c.href() : c.href;
     const el = document.createElement(href ? 'a' : 'button');
-    el.className = 'osd-btn'; el.textContent = c.name;
+    el.className = 'osd-btn'; const ic = toolIcon(c.icon); if (ic) el.appendChild(ic); el.appendChild(document.createTextNode(c.name));
     if (href) { el.href = href; if (/^https?:/.test(href)) { el.target = '_blank'; el.rel = 'noopener noreferrer'; } }
     el.addEventListener('click', async () => {
       const snippet = c.copy(); let ok = false;

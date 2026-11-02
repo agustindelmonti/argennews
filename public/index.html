@@ -25,6 +25,7 @@
             <div class="row">
               <button class="osd-btn danger" id="btnRec">● Grabar</button>
               <label class="osd-btn" id="lblFile">Subir video<input id="file" type="file" accept="video/*" hidden></label>
+              <button class="osd-btn" id="btnNext" hidden>Seguir a la redacción ▶</button>
             </div>
             <p id="camInfo" class="note"></p>
           </section>
@@ -36,7 +37,7 @@
             <div id="deskGen" hidden>
               <label class="check"><input type="checkbox" id="consent">
                 <span>Acepto que unos fotogramas de mi video se envíen a una IA para escribir la noticia. Es humor y ficción. El video no se guarda.</span></label>
-              <div class="row"><button class="osd-btn danger" id="btnGen" disabled>Generar noticia</button></div>
+              <div class="row"><button class="osd-btn danger" id="btnGen" disabled>Generar noticia</button><button class="osd-btn" id="btnBackCam">◀ Cambiar video</button><button class="osd-btn" id="btnContinue" hidden>Seguir editando ▶</button></div>
             </div>
             <div id="deskForm" hidden>
               <div class="grid">
@@ -46,8 +47,13 @@
                 <label class="wide">Bajada<input id="fBajada" maxlength="100"></label>
                 <label class="wide">Texto del conductor<textarea id="fConductor" rows="2" maxlength="300"></textarea></label>
               </div>
-              <div class="row"><button class="osd-btn danger" id="btnToAir">▶ Al aire (canal 3)</button><button class="osd-btn" id="btnRegen">Otra versión</button></div>
               <p class="note" id="hint"></p>
+              <div class="actions">
+                <button class="osd-btn danger" id="btnToAir">▶ Al aire</button>
+                <button class="osd-btn" id="btnRegen">Otra versión</button>
+                <button class="osd-btn" id="btnBackGen">◀ Volver</button>
+                <button class="osd-btn" data-goto="1">Otro video</button>
+              </div>
             </div>
           </section>
 
@@ -75,10 +81,11 @@
           <div id="pComBar" hidden><button class="osd-btn" id="btnHow">ℹ Cómo participar</button></div>
           <section class="page" id="pHow" hidden aria-label="Cómo mandar tu noticia">
             <h2>Mandá tu noticia desde tu IA</h2>
-            <p>Conectá tu asistente a este canal y pedile: <i>«Mandá a Pampa 7 una noticia sobre mi gato que no quiere bajar del ropero»</i>. Tu asistente la escribe con sus propios tokens, la envía y, si pasa la moderación, sale en los canales 5 y 3.</p>
-            <p class="note warn" id="howWarn" hidden>Ahora estás en una dirección local o sin https. Claude y ChatGPT necesitan una URL pública con https para conectarse.</p>
+            <p>Conectá tu asistente y pedile <i>«Mandá a Pampa 7 una noticia sobre mi gato»</i>. La escribe con sus tokens y, si pasa la moderación, sale en los canales 5 y 3.</p>
+            
             <p class="lead">Elegí tu asistente:</p>
             <div class="row" id="howBtns"></div>
+            <p class="note warn" id="howWarn" hidden>Ahora estás en una dirección local o sin https. Claude y ChatGPT necesitan una URL pública con https para conectarse.</p>
             <div id="howSteps" class="steps" hidden><p id="howText"></p><pre id="howCode"></pre></div>
             <label>Servidor MCP<input id="mcpUrl" readonly></label>
             <div class="row"><button class="osd-btn" id="btnCopy">Copiar link</button><button class="osd-btn" id="btnHowClose">Cerrar</button></div>
