@@ -48,6 +48,22 @@ export const SEGMENTS = [
   { etiqueta: 'DEPORTES', titular: 'NUEVO FORMATO: 47 ZONAS, 3 FASES Y UN REPECHAJE DE MATE', bajada: 'Los hinchas piden un mapa. Les entregan una planilla.', movil: 'Desde una oficina con muchas planillas',
     conductor: 'Gran anuncio en el fútbol argentino: se presentó el nuevo formato de torneo. Habrá cuarenta y siete zonas, tres fases y un repechaje de mate. Nadie entendió nada, pero todos dicen que van a ir a la cancha igual.',
     ticker: ['Especialistas en tablas piden aumento', 'Se sortea quién explica el desempate', 'El árbitro llega con calculadora'], emoji: ['📋', '🏟️', '🧉'], bg: ['#0a6b2b', '#7bd34a'] },
+  // --- Porteños vs. interior (cariñoso para los dos lados), homenaje a los videos de rock de Capusotto y el conductor del aerosol ---
+  { etiqueta: 'COLOR', titular: 'PORTEÑO PIDIÓ UN CAFÉ «RÁPIDO» Y EL MOZO LE CONTÓ SU VIDA', bajada: 'Salió 40 minutos después, con tres recomendaciones y una invitación a una peña.', movil: 'Desde un pueblo muy tranquilo del interior',
+    conductor: 'Escena de choque cultural. Un visitante de la capital pidió un café rápido en un bar del interior. El mozo, muy amable, le contó la historia del bar, la de su familia y la del pueblo. El café llegó, pero ya estaba para el recuerdo.',
+    ticker: ['Se recomienda llegar sin apuro', 'El porteño pidió el libro de quejas y le trajeron un mate', 'El reloj del bar tiene otra idea del tiempo'], emoji: ['☕', '🕰️'], bg: ['#7a3b00', '#f0a020'] },
+  { etiqueta: 'ÚLTIMO MOMENTO', titular: 'VISITANTE DEL INTERIOR PREGUNTA POR QUÉ TODOS CORREN', bajada: 'Nadie frenó a contestarle. El semáforo ya cambió dos veces.', movil: 'Desde una esquina de Buenos Aires',
+    conductor: 'Una persona recién llegada del interior se paró en una esquina de la capital y preguntó, con toda calma, por qué corre todo el mundo. Nadie frenó a contestarle. Alguien gritó la respuesta desde un colectivo, pero iba muy rápido.',
+    ticker: ['Se investiga si hay una carrera y nadie avisó', 'El visitante ofreció un mate a los que pasaban. Pasó uno', 'Las palomas, las únicas sin apuro'], emoji: ['🏃', '🚦'], bg: ['#0b3d91', '#e0202b'] },
+  { etiqueta: 'EXCLUSIVA', titular: 'LA CAPITAL Y EL INTERIOR FIRMAN LA PAZ: 14 PUNTOS Y UN ASADO', bajada: 'Entre los puntos, que nadie grite «che» a las siete de la mañana.', movil: 'Desde una mesa larga con mantel de plástico',
+    conductor: 'Histórico acuerdo entre las dos Argentinas. Se firmó un tratado de catorce puntos: nadie se ofende por cómo habla el otro, todos admiten que el dulce de leche va con todo y el asado se decide entre todos. Brindaron con soda.',
+    ticker: ['Se discutirá el punto quince en el próximo asado', 'El mate pasó por las dos delegaciones sin incidentes', 'Nadie recordó quién tenía la sal'], emoji: ['🤝', '🥩', '🇦🇷'], bg: ['#0a6b2b', '#7bd34a'] },
+  { etiqueta: 'FARÁNDULA', titular: 'ROCKERO ANUNCIA LA GIRA MÁS TRISTE: «GIRA: UNA MENTIRA»', bajada: 'Con cariño para los videos de Capusotto, que nos enseñaron a reírnos del rock.', movil: 'Desde un sótano con muchas guitarras',
+    conductor: 'Gran anuncio del rock nacional. Un cantante serísimo presentó su nueva gira: un único recital, en su casa. Pide silencio, ropa negra y que no le hablen del éxito. Es un homenaje a esos videos que nos hicieron reír del género.',
+    ticker: ['Se espera una gran ovación de cinco personas y un perro', 'Entradas: gratis, pero hay que mirar serio', 'Con cariño para Pomelo y compañía'], emoji: ['🎸', '🖤'], bg: ['#2a0a5e', '#8a2be2'] },
+  { etiqueta: 'ESPECTÁCULOS', titular: 'NUBE DE DESODORANTE EN EL ESTUDIO LLEGA A LA TERCERA FILA', bajada: 'Se rocía en vivo. El público estornuda. El aplauso, también.', movil: 'Desde un estudio de televisión muy perfumado',
+    conductor: 'Momento de máxima fragancia en el estudio. El conductor del programa de entretenimientos más largo de la tele se roció con aerosol en vivo y la nube llegó a la tercera fila. El público aplaudió, tosió y pidió ventanas.',
+    ticker: ['Se sortea quién abre la puerta del estudio', 'El aerosol se llevó el rating y una cortina', 'Se acepta cualquier marca, menos la que huele a ropa guardada'], emoji: ['💨', '🧴'], bg: ['#0a3d62', '#74b9ff'] },
 ];
 
 // Sketches del clima: pantallas estilo Star4000 (kind: 'clima'). Tipografía e íconos de "Lucy's Local on the 8's" (ver THIRD_PARTY.md).

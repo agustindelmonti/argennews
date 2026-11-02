@@ -27,6 +27,11 @@ Los chistes se refinan de a poco. Esta guía fija qué entra y qué no, para que
 Las fuentes se buscaron en línea y varias tenían fechas desordenadas: antes de sumar un chiste con una persona real, verificar el dato en dos medios.
 Sin referencias a la causa por evasión fiscal ni a ningún tema judicial.
 
+## Capusotto, Tinelli y otros referentes
+- Se puede nombrar a *Peter Capusotto y sus videos* como homenaje y escribir chistes **en su estilo**, pero no se copian sus sketches, canciones ni frases textuales (tienen derechos de autor).
+- Personajes que **no** usamos: Micky Vainilla (connotaciones nazis), Bombita Rodríguez (política partidaria) y Violencia Rivas (parodia de una persona real). De Pomelo (parodia de los rockeros) solo hay una mención cariñosa.
+- **Tinelli y el aerosol:** no encontramos ninguna fuente que confirme ese episodio, así que el segmento del aerosol **no nombra a nadie** («el conductor del programa de entretenimientos más largo de la tele»). Si se quiere nombrar, primero hace falta el dato con fuente.
+
 ## Ideas para seguir (de menor a mayor riesgo)
 1. Relatores y su vocabulario («GOOOL», «el VAR», «se lo perdió»).
 2. Fixture, formatos de torneo y tablas imposibles.
