@@ -12,3 +12,6 @@
 
 ## mp4-muxer
 `public/vendor/mp4-muxer.js` — mp4-muxer 5.2.2 (Vanilla JS MP4 muxer), licencia MIT, © Vanilagy. Texto en `public/vendor/mp4-muxer.LICENSE`.
+
+## SVOX Pico
+Las voces de `public/audio/` se sintetizan con SVOX Pico (paquete `libttspico-utils`, licencia Apache-2.0); los archivos generados son del proyecto.

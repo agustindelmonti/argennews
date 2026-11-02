@@ -2,8 +2,8 @@
 // 1) Camino bueno (Chrome/Edge/Safari recientes): WebCodecs + mp4-muxer → MP4 con H.264 y AAC, con el índice al principio
 //    (se abre en cualquier reproductor y lo aceptan X, Instagram y WhatsApp). No usa MediaRecorder, que es lo que dejaba archivos «rotos».
 // 2) Camino de reserva (Firefox y navegadores sin H.264 en WebCodecs): MediaRecorder sobre el mismo canvas compuesto.
-// El audio sale de la mezcla de la app (cortina, efectos y la voz pregrabada si hay) o, si se pasa audioStream, del audio de la pestaña
-// (getDisplayMedia), que es lo único que puede traer la voz del navegador. El VIDEO nunca sale de la captura: se compone acá, para que el MP4 sea válido.
+// El audio sale de la mezcla de la app (cortina, efectos y la voz pregrabada si hay).
+// El video se compone acá (no sale de una captura de pantalla), para que el MP4 sea válido.
 import { Muxer, ArrayBufferTarget } from './vendor/mp4-muxer.js';
 
 const W = 1280, H = 970;               // el televisor (marco incluido)
