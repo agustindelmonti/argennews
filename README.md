@@ -33,15 +33,24 @@ Celular: en vertical la TV ocupa el ancho y los menús pasan a un panel debajo; 
 Pruebas: `npm test` (servidor local y modo Vercel + Supabase simulado). Créditos de terceros: `THIRD_PARTY.md`.
 
 ## Deploy en Vercel
-1. **Supabase:** creá un proyecto y ejecutá `supabase/schema.sql` en el SQL Editor (crea las tablas con RLS activado y sin políticas: solo el servidor accede).
-2. **Vercel:** importá el repo (sin framework; `vercel.json` ya define `public/` como salida, las rutas `/mcp` y `/admin/api/*`, y la función `api/[...path].js`).
-3. **Variables de entorno** (Settings → Environment Variables):
-   `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` o `SUPABASE_SERVICE_ROLE_KEY` (clave *service_role*; la integración Supabase de Vercel la inyecta sola), `ADMIN_TOKEN` (largo y aleatorio), `ANTHROPIC_API_KEY`,
-   y opcionalmente `AUTO_APPROVE=1`, `OPENAI_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_MODEL_CHEAP` y los límites.
-4. **Probalo:** `https://TU-PROYECTO.vercel.app/` es el televisor, `/admin.html` el panel y `/mcp` el servidor MCP.
-5. **MCP público:** ChatGPT y Claude llaman a `/mcp` desde sus servidores, así que usá el dominio de producción y revisá que *Deployment Protection* no lo bloquee.
+1. **Supabase:** creá un proyecto y ejecutá `supabase/schema.sql` en el SQL Editor (tablas con RLS activado y sin políticas: solo el servidor entra).
+2. **Almacenamiento: elegí una de dos formas** (la app usa la primera que encuentra):
+   - **Puente (recomendado, sin copiar claves):** desplegá `supabase/functions/store` como Edge Function (sin verificación de JWT: se autentica sola), generá un token al azar, guardá **solo su hash** SHA-256 en la tabla `store_auth` (`supabase/store_auth.sql`) y cargá en Vercel `STORE_URL` (`https://<proyecto>.supabase.co/functions/v1/store`) y `STORE_TOKEN` (el token, como variable sensible). La clave `service_role` nunca sale de Supabase.
+   - **Directo:** `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` (o `SUPABASE_SERVICE_ROLE_KEY`, que inyecta la integración Supabase ↔ Vercel al conectar el proyecto).
+3. **Vercel:** importá el repo (sin framework; `vercel.json` define `public/`, las rutas `/mcp` y `/admin/api/*` y la función `api/[...path].js`). Cada push a `main` despliega solo.
+4. **Variables de entorno.** Lo que habilita cada una:
 
-Sin Supabase el panel muestra un aviso: en Vercel el archivo local es temporal y se pierde. Los límites diarios también viven en Supabase (función `bump_limit`).
+   | Variable | Para qué | Sin ella |
+   | --- | --- | --- |
+   | `STORE_URL` + `STORE_TOKEN` (o `SUPABASE_*`) | **Guardar todo**: votos, audiencia, tweets, noticias de la comunidad, límites | Archivo temporal (se pierde en Vercel); la audiencia se oculta |
+   | `ADMIN_TOKEN` | Entrar a `/admin.html` | Admin desactivado |
+   | `ANTHROPIC_API_KEY` | **Solo IA**: escribir la noticia desde tu video, generar por tendencias y moderar | Guiones de ejemplo; el resto anda igual |
+   | `OPENAI_API_KEY` | Voz del conductor en el archivo descargado | Voz solo en la vista previa |
+   | `AUTO_APPROVE=1` | Aprobar solas las noticias del MCP que pasen la moderación (requiere `ANTHROPIC_API_KEY`) | Todo queda pendiente hasta que aprobás |
+
+   **El guardado no depende de Anthropic.** Los votos, la audiencia y el resto se guardan con solo configurar el almacenamiento.
+5. **Probalo:** `/` es el televisor, `/admin.html` el panel, `/mcp` el servidor MCP y `/api/health` dice qué almacenamiento se usa y si responde.
+6. **MCP público:** ChatGPT y Claude llaman a `/mcp` desde sus servidores: usá el dominio de producción y revisá que *Deployment Protection* no lo bloquee.
 
 ## Cómo funciona
 - `public/app.js`: todo el render va a un `<canvas>`; la vista previa y la descarga usan el mismo pipeline
