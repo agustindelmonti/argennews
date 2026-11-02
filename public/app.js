@@ -905,14 +905,75 @@ function drawSnow() {
   for (let i = 0; i < sd.data.length; i += 4) { const v = Math.random() * 255; sd.data[i] = sd.data[i + 1] = sd.data[i + 2] = v; sd.data[i + 3] = 255; }
   sx.putImageData(sd, 0, 0); g.imageSmoothingEnabled = false; g.drawImage(snow, 0, 0, W, H); g.imageSmoothingEnabled = true;
 }
-// Canal 7: cartel fijo «Dificultades técnicas». Es la pantalla para cuando algo falla (servidor, emisión) y el mismo cartel que se puede mostrar a propósito.
-const TECH = new Image(); TECH.src = 'assets/dificultades-tecnicas.png';
-function drawTech() {
-  if (TECH.complete && TECH.naturalWidth) g.drawImage(TECH, 0, 0, W, H);
-  else { g.fillStyle = '#3a1f6b'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '700 34px Arial'; g.fillText('DIFICULTADES TÉCNICAS', W / 2, H / 2 - 10); g.font = '700 22px Arial'; g.fillText('POR FAVOR, NO CAMBIE DE CANAL', W / 2, H / 2 + 28); g.textAlign = 'left'; }
+// Canal 7: cartel fijo «Dificultades técnicas», dibujado con la estética de la app (azules, rojo y amarillo del noticiero, tipografía Star4000).
+// Es la pantalla para cuando algo falla (servidor, emisión). El camarógrafo se tambalea con el mate en la mano.
+function drawTech(t) {
+  const NAVY = '#061050', BLUE = '#1b4fd8', RED = '#e0202b', YEL = '#ffd400', WHITE = '#ffffff', SKIN = '#f0b98a', INK = '#0b0f2a';
+  const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#071a55'); gr.addColorStop(1, BLUE);
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
+  for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(W / 2, 270, 60 + i * 44, 0, 7); g.stroke(); }
+  // franja superior con el logo y el aviso intermitente
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, 0, W, 64);
+  logo(26, 17, 1.0);
+  if (Math.floor(t * 1.6) % 2 === 0) { g.fillStyle = RED; g.beginPath(); g.arc(W - 150, 32, 7, 0, 7); g.fill(); }
+  sTxt('SIN SENAL', W - 134, 40, WHITE, 18, 'left', true);
+  sTxt('DIFICULTADES TECNICAS', W / 2, 108, YEL, 38, 'center', true, W - 60);
+  // piso
+  g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(W / 2, 400, 230, 22, 0, 0, 7); g.fill();
+  // cámara sobre trípode
+  const cx = 190, cy = 250;
+  g.strokeStyle = INK; g.lineWidth = 6; g.lineCap = 'round';
+  [[cx, cy + 58, cx - 46, 392], [cx, cy + 58, cx + 46, 392], [cx, cy + 58, cx + 4, 396]].forEach(([x1, y1, x2, y2]) => { g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); });
+  g.fillStyle = INK; g.fillRect(cx - 5, cy + 36, 10, 26);
+  g.fillStyle = '#16203f'; g.fillRect(cx - 62, cy - 44, 112, 74);            // cuerpo
+  g.fillStyle = '#2a3a8f'; g.fillRect(cx - 58, cy - 40, 104, 66);
+  g.fillStyle = INK; g.fillRect(cx - 94, cy - 26, 36, 38);                    // lente
+  g.fillStyle = '#7fb4ff'; g.beginPath(); g.arc(cx - 94, cy - 7, 10, 0, 7); g.fill();
+  g.fillStyle = INK; g.fillRect(cx - 40, cy - 62, 62, 20);                    // visor
+  g.fillStyle = WHITE; g.beginPath(); g.ellipse(cx + 20, cy - 8, 20, 13, 0, 0, 7); g.fill();
+  g.fillStyle = BLUE; g.font = '900 15px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('P7', cx + 20, cy - 7);
+  if (Math.floor(t * 2) % 2 === 0) { g.fillStyle = RED; g.beginPath(); g.arc(cx - 46, cy - 30, 4, 0, 7); g.fill(); }   // luz de REC
+  // camarógrafo tambaleándose
+  const sw = Math.sin(t * 2.2), px = 400 + sw * 10, lean = sw * 0.07;
+  g.save(); g.translate(px, 392); g.rotate(lean); g.scale(0.9, 0.9);
+  g.strokeStyle = '#18246b'; g.lineWidth = 17; g.lineCap = 'round';          // piernas (una adelantada, como al pisar el cable)
+  g.beginPath(); g.moveTo(-8, -118); g.lineTo(-34, -50 + sw * 4); g.lineTo(-56, -8); g.stroke();
+  g.beginPath(); g.moveTo(8, -118); g.lineTo(26, -58); g.lineTo(22, -4); g.stroke();
+  g.fillStyle = INK; g.beginPath(); g.ellipse(-64, -2, 17, 8, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(32, 0, 17, 8, 0, 0, 7); g.fill();
+  g.fillStyle = RED; g.beginPath(); g.moveTo(-30, -128); g.lineTo(30, -128); g.lineTo(36, -200); g.lineTo(-36, -200); g.closePath(); g.fill();   // remera P7
+  g.fillStyle = WHITE; g.font = '900 20px Arial'; g.textAlign = 'center'; g.fillText('P7', 0, -162);
+  g.strokeStyle = SKIN; g.lineWidth = 12;                                    // brazo izquierdo sobre la cámara
+  g.beginPath(); g.moveTo(-30, -190); g.lineTo(-90, -176); g.lineTo(-134, -170); g.stroke();
+  g.fillStyle = SKIN; g.beginPath(); g.arc(-138, -170, 9, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(30, -190); g.lineTo(76, -160); g.lineTo(88, -196 + sw * 6); g.stroke();   // brazo derecho con el mate
+  g.fillStyle = SKIN; g.beginPath(); g.arc(88, -200 + sw * 6, 9, 0, 7); g.fill();
+  const mx = 88, my = -214 + sw * 6;                                         // mate: calabaza + bombilla
+  g.fillStyle = '#6b3f1d'; g.beginPath(); g.moveTo(mx - 15, my - 14); g.lineTo(mx + 15, my - 14); g.quadraticCurveTo(mx + 17, my + 12, mx, my + 14); g.quadraticCurveTo(mx - 17, my + 12, mx - 15, my - 14); g.fill();
+  g.fillStyle = '#2f7a2a'; g.fillRect(mx - 15, my - 16, 30, 5);
+  g.strokeStyle = '#d8d8e0'; g.lineWidth = 3; g.beginPath(); g.moveTo(mx + 2, my - 14); g.lineTo(mx + 14, my - 42); g.stroke();
+  g.fillStyle = '#c0c8d8'; g.fillRect(-62, -176, 18, 44);                    // termo bajo el brazo
+  g.fillStyle = RED; g.fillRect(-62, -176, 18, 8);
+  g.fillStyle = SKIN; g.beginPath(); g.ellipse(0, -232, 30, 34, 0, 0, 7); g.fill();   // cabeza
+  g.fillRect(-7, -206, 14, 14);
+  g.fillStyle = WHITE; g.beginPath(); g.arc(-10, -236, 9, 0, 7); g.arc(12, -236, 9, 0, 7); g.fill();   // ojos desorbitados
+  g.fillStyle = INK; g.beginPath(); g.arc(-8 + Math.sin(t * 5) * 3, -236, 3.2, 0, 7); g.arc(14 + Math.cos(t * 5) * 3, -236, 3.2, 0, 7); g.fill();
+  g.fillStyle = INK; g.beginPath(); g.ellipse(2, -216, 9, 6 + Math.abs(sw) * 2, 0, 0, 7); g.fill();   // boca de «ay»
+  g.fillStyle = BLUE; g.beginPath(); g.ellipse(0, -258, 33, 18, 0, Math.PI, 0); g.fill(); g.fillRect(-33, -259, 70, 6);   // gorra
+  g.fillStyle = WHITE; g.font = '900 11px Arial'; g.fillText('P7', 0, -266);
+  g.restore();
+  // estrellitas de mareo girando sobre la cabeza
+  for (let i = 0; i < 4; i++) { const a = t * 2.6 + i * Math.PI / 2, x = px + Math.cos(a) * 46, y = 392 - 242 + Math.sin(a) * 9; g.fillStyle = YEL; g.beginPath(); for (let k = 0; k < 8; k++) { const r = k % 2 ? 2.5 : 6, b = k * Math.PI / 4; g.lineTo(x + Math.cos(b) * r, y + Math.sin(b) * r); } g.closePath(); g.fill(); }
+  // cable de la cámara por el piso
+  g.strokeStyle = INK; g.lineWidth = 4; g.beginPath(); g.moveTo(cx + 4, 396); g.bezierCurveTo(250, 440, 300, 360, 350, 402); g.bezierCurveTo(380, 424, 330, 436, 360, 410); g.stroke();
+  // leyenda
+  g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(0, 418, W, 62);
+  sTxt('POR FAVOR, NO CAMBIE DE CANAL', W / 2, 446, WHITE, 22, 'center', true, W - 60);
+  sTxt('Volvemos en cuanto el camarografo encuentre el cable', W / 2, 470, '#cfd8ff', 14, 'center', false, W - 60);
+  g.textAlign = 'left';
 }
 function drawIdle(t) {
-  if (S.ch === 7) drawTech();
+  if (S.ch === 7) drawTech(t);
   else if (S.ch === 1) {
     if (S.clipDur && vid.readyState >= 2 && vid.videoWidth) { cover(vid, vid.videoWidth, vid.videoHeight); g.fillStyle = 'rgba(0,0,40,.45)'; g.fillRect(0, 0, W, H); logo(W - 64, 20); }
     else drawBars(t, '');

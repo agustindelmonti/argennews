@@ -10,9 +10,6 @@
 - Claude, OpenAI (ChatGPT), Google Gemini, Cursor, X e Instagram: del paquete [Simple Icons](https://simpleicons.org/) 15.22.0, licencia CC0 1.0 (dominio público).
 - Los logotipos y nombres son marcas de sus respectivos titulares. Se muestran solo para indicar con qué herramientas es compatible el servidor MCP, sin sugerir afiliación ni respaldo. Si alguna marca pide retirarlos, se reemplazan por el ícono genérico (`link`).
 
-## Cartel «Dificultades técnicas» (canal 7)
-- `public/assets/dificultades-tecnicas.png`: cuadro de una serie de TV animada, aportado por el responsable del proyecto. Es material con derechos de terceros: si el proyecto se hace público o comercial, conviene reemplazarlo por un cartel propio (basta con pisar el archivo, mismo nombre y 640×480).
-
 ## mp4-muxer
 `public/vendor/mp4-muxer.js` — mp4-muxer 5.2.2 (Vanilla JS MP4 muxer), licencia MIT, © Vanilagy. Texto en `public/vendor/mp4-muxer.LICENSE`.
 
