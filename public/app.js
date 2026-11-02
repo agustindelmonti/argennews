@@ -51,15 +51,22 @@ function ensureAudio() {
   ac.createMediaElementSource(vid).connect(S.mix);
   applyVolume();
 }
+// Curva de volumen: potencia 1,5 (la cuadrática dejaba el sonido casi inaudible desde la mitad hacia abajo).
+const level = (v) => (v <= 0 ? 0 : Math.pow(v, 1.5));
 function applyVolume() {
   const silent = !S.on || S.muted;
-  if (S.mon) S.mon.gain.value = silent ? 0 : S.vol * S.vol;
-  if (S.fx) S.fx.gain.value = S.muted ? 0 : Math.max(0.08, S.vol * S.vol);
+  if (S.mon) S.mon.gain.value = silent ? 0 : level(S.vol);
+  if (S.fx) S.fx.gain.value = S.muted ? 0 : S.vol > 0 ? Math.max(level(S.vol), 0.06) : 0;   // los ruidos de los botones se siguen oyendo con volumen bajo, salvo en 0
   vid2.muted = silent; vid2.volume = S.vol;                                  // video de colaboración (no pasa por WebAudio)
-  if (silent && window.speechSynthesis) speechSynthesis.cancel();            // la voz del navegador no se puede bajar a mitad de frase
+  if (silent) stopSpeech(); else resumeSpeechSoon();                         // la voz del navegador no se puede bajar a mitad de frase: se corta y se retoma
 }
-function setVol(d) { S.vol = Math.min(1, Math.max(0, Math.round((S.vol + d) * 10) / 10)); if (S.muted && d > 0) S.muted = false; applyVolume(); volOsd(); }
-function toggleMute() { S.muted = !S.muted; applyVolume(); volOsd(); }
+function setVol(d) {
+  S.vol = Math.min(1, Math.max(0, Math.round((S.vol + d) * 10) / 10)); if (S.muted && d > 0) S.muted = false;
+  applyVolume(); volOsd();
+  if (S.vol > 0 && !S.muted) blip(480 + S.vol * 900, 0.07);                  // pitido más agudo cuanto más volumen: se escucha el nivel
+}
+function toggleMute() { S.muted = !S.muted; applyVolume(); volOsd(); if (!S.muted) blip(880, 0.09); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.ac) S.ac.resume(); });
 
 function sting(at) {
   const ac = S.ac;
@@ -95,7 +102,7 @@ function crtSound(on) {
 function blip(freq = 880, len = 0.08) {   // beep del control remoto (solo parlantes, no entra en la grabación)
   if (!S.ac || !S.on) return;
   const o = S.ac.createOscillator(), gn = S.ac.createGain(), t = S.ac.currentTime;
-  o.type = 'square'; o.frequency.value = freq; gn.gain.setValueAtTime(0.05, t); gn.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  o.type = 'square'; o.frequency.value = freq; gn.gain.setValueAtTime(0.18, t); gn.gain.exponentialRampToValueAtTime(0.0001, t + len);
   o.connect(gn); gn.connect(S.fx); o.start(t); o.stop(t + len + 0.02);
 }
 async function prepareVoice(text) {
@@ -107,13 +114,26 @@ async function prepareVoice(text) {
     S.ttsBuf = await S.ac.decodeAudioData(await r.arrayBuffer()); S.ttsText = text;
   } catch { S.ttsBuf = null; }
 }
-function speakFallback(text) {
-  if (!('speechSynthesis' in window) || S.muted) return;
-  const u = new SpeechSynthesisUtterance(text), vs = speechSynthesis.getVoices();
+// Voz del navegador. Se recuerda por dónde iba (S.speech) para poder retomarla al des-silenciar o al cambiar el volumen.
+function speakFrom(text, startIdx = 0) {
+  if (!('speechSynthesis' in window) || S.muted || !S.on) return;
+  const rest = text.slice(startIdx), sp = { text, idx: startIdx, done: !rest.trim(), stopping: false, vol: S.vol, air: S.air };
+  S.speech = sp; if (sp.done) return;
+  const u = new SpeechSynthesisUtterance(rest), vs = speechSynthesis.getVoices();
   const v = vs.find((x) => /es-AR/i.test(x.lang)) || vs.find((x) => /^es/i.test(x.lang));
   if (v) u.voice = v;
   u.lang = v ? v.lang : 'es-AR'; u.rate = 1.12; u.pitch = 0.85; u.volume = S.vol;
+  u.onboundary = (e) => { if (typeof e.charIndex === 'number') sp.idx = startIdx + e.charIndex; };
+  u.onend = () => { if (!sp.stopping) sp.done = true; };
   speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
+const speakFallback = (text) => speakFrom(text, 0);
+function stopSpeech() { if (S.speech) S.speech.stopping = true; if (window.speechSynthesis) speechSynthesis.cancel(); }
+function resumeSpeechSoon() { clearTimeout(S.speechT); S.speechT = setTimeout(resumeSpeech, 220); }   // espera un poco por si se aprieta varias veces seguidas
+function resumeSpeech() {
+  const sp = S.speech;
+  if (!sp || sp.done || !S.on || S.muted || !S.air || S.air.cancel || S.air !== sp.air || S.air.rec) return;   // solo el segmento que sigue al aire
+  if (sp.stopping || sp.vol !== S.vol) speakFrom(sp.text, sp.idx);
 }
 
 /* ---------------- Encendido, canales, navegación ---------------- */
@@ -179,6 +199,19 @@ function fullscreen() {
 
 const ACT = { power, guide: toggleGuide, chup: () => setChannel(S.ch + 1), chdn: () => setChannel(S.ch - 1), volup: () => { if (S.on) setVol(0.1); }, voldn: () => { if (S.on) setVol(-0.1); }, mute: () => { if (S.on) toggleMute(); }, full: fullscreen };
 function ensureAudioSoft() { try { ensureAudio(); } catch { /* sin audio */ } }
+// Ruido en todos los botones: pulsador mecánico en el control remoto y «bip» en los botones de pantalla. data-sfx="own": ya hacen su propio sonido.
+function uiClick(kind) {
+  const ac = S.ac; if (!ac || !S.fx) return; const t = ac.currentTime, rb = kind === 'rb';
+  const o = ac.createOscillator(), g2 = ac.createGain(); o.type = 'square';
+  o.frequency.setValueAtTime(rb ? 190 : 1150, t); o.frequency.exponentialRampToValueAtTime(rb ? 70 : 760, t + 0.045);
+  g2.gain.setValueAtTime(rb ? 0.45 : 0.14, t); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  o.connect(g2); g2.connect(S.fx); o.start(t); o.stop(t + 0.07);
+  if (rb) { const n = ac.createBufferSource(), f = ac.createBiquadFilter(), g3 = ac.createGain(); n.buffer = noiseBuf(0.02); f.type = 'bandpass'; f.frequency.value = 2200; g3.gain.setValueAtTime(0.3, t); g3.gain.exponentialRampToValueAtTime(0.0001, t + 0.02); n.connect(f); f.connect(g3); g3.connect(S.fx); n.start(t); }
+}
+const BTN = 'button, .osd-btn';
+const btnOf = (e) => { const el = e.target && e.target.closest ? e.target.closest(BTN) : null; return el && !el.disabled && el.dataset.sfx !== 'own' ? el : null; };
+addEventListener('pointerdown', (e) => { const el = btnOf(e); if (!el) return; ensureAudioSoft(); uiClick(el.closest('#remote') ? 'rb' : 'osd'); }, true);
+addEventListener('click', (e) => { if (e.detail !== 0) return; const el = btnOf(e); if (el) { ensureAudioSoft(); uiClick(el.closest('#remote') ? 'rb' : 'osd'); } }, true);   // teclado: Enter o espacio sobre un botón
 document.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => { ensureAudioSoft(); ACT[b.dataset.act](); }));
 document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => setChannel(Number(b.dataset.goto))));
 
