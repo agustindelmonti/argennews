@@ -17,6 +17,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--
 #chbadge small{display:block;font-size:.55em;color:#c9ffd0}
 #volbar{z-index:4;position:absolute;left:6%;top:5%;font-family:'VT323',monospace,monospace;color:#5dff6a;font-size:1.9em;letter-spacing:.08em}
 #msg{position:absolute;left:50%;bottom:1.5%;transform:translateX(-50%);width:max-content;max-width:90%;background:#000c;border:.3cqw solid #fff;padding:.35em .9em;text-align:center;font-weight:700;z-index:3}
+#msg[data-pos=top]{bottom:auto;top:16%}
 .page{position:absolute;inset:8% 7% 14%;overflow:auto;padding:.9em 1.3em;background:rgba(6,16,80,.9);border:.4cqw solid #fff;box-shadow:.8cqw .8cqw 0 #000a;scrollbar-width:thin}
 .page h2{margin:0 0 .6em;font-size:1.25em;text-transform:uppercase;letter-spacing:.1em;color:var(--yel)}
 .page p{margin:0 0 .8em}

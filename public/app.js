@@ -29,7 +29,7 @@ fetch('/api/config').then((r) => r.json()).then((c) => { S.config = c; }).catch(
 /* ---------------- OSD: mensajes, badge de canal, volumen ---------------- */
 const timers = {};
 function flash(id, ms) { const el = $(id); el.hidden = false; clearTimeout(timers[id]); timers[id] = setTimeout(() => (el.hidden = true), ms); }
-function say(t, ms = 3200) { if (!S.on) return; $('msg').textContent = t; flash('msg', ms); }
+function say(t, ms = 3200) { if (!S.on) return; $('msg').dataset.pos = S.ch === 3 && !S.guide ? 'top' : 'bottom'; $('msg').textContent = t; flash('msg', ms); }
 function badge() { if (!S.on) return; $('chbadge').innerHTML = `CH ${String(S.ch).padStart(2, '0')}<small>${CH_NAMES[S.ch]}</small>`; flash('chbadge', 2200); }
 function volOsd() {
   const n = S.muted ? 0 : Math.round(S.vol * 10);
@@ -386,14 +386,20 @@ function drawStudio(t, st, a) {
   g.fillStyle = '#e0202b'; g.fillRect(24, 82, 150, 24); g.fillStyle = '#fff'; g.font = '800 14px Arial'; g.fillText('● EN VIVO', 34, 99);
   if (a) {
     const full = st.conductor, shown = full.slice(0, Math.max(0, Math.floor(((t - 0.8) / Math.max(1, a.intro - 1.8)) * full.length)));
-    g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(24, 130, 330, 210); g.fillStyle = '#fff';
-    wrap(shown, 300, '600 17px Arial').slice(0, 9).forEach((l, i) => g.fillText(l, 40, 160 + i * 22));
+    g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(24, 124, 330, 192); g.fillStyle = '#fff';
+    wrap(shown, 300, '600 17px Arial').slice(0, 8).forEach((l, i) => g.fillText(l, 40, 152 + i * 22));
   }
 }
 function drawOverlay(t, st) {
   g.fillStyle = '#e0202b'; g.fillRect(20, 20, 84, 24); g.fillStyle = '#fff'; g.font = '800 14px Arial'; g.fillText('● EN VIVO', 28, 37);
   if (st.movil) { g.fillStyle = 'rgba(0,0,0,.65)'; g.font = '600 13px Arial'; const w = g.measureText(st.movil).width + 16; g.fillRect(20, 44, w, 22); g.fillStyle = '#fff'; g.fillText(st.movil, 28, 60); }
   logo(W - 64, 20);
+  drawLower(t, st);
+}
+// Banner inferior de la noticia: etiqueta, titular, bajada y ticker con reloj. Entra deslizando.
+function drawLower(t, st) {
+  const k = Math.min(1, t / 0.5), dx = -(W * (1 - k * (2 - k)));   // ease-out
+  g.save(); g.translate(dx, 0);
   g.font = '800 14px Arial'; const tw = g.measureText(st.etiqueta).width + 24;
   g.fillStyle = '#e0202b'; g.fillRect(24, H - 150, tw, 24); g.fillStyle = '#fff'; g.fillText(st.etiqueta, 36, H - 133);
   g.fillStyle = 'rgba(14,32,110,.96)'; g.fillRect(24, H - 126, W - 48, 46); g.fillStyle = '#e0202b'; g.fillRect(24, H - 126, 8, 46);
@@ -406,6 +412,7 @@ function drawOverlay(t, st) {
   g.fillStyle = '#1b4fd8'; g.fillRect(24, H - 56, 60, 24);
   const d = new Date(); g.fillStyle = '#fff'; g.font = '800 14px Arial';
   g.fillText(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`, 36, H - 39);
+  g.restore();
 }
 function filter(t) {
   const v = g.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.85);
@@ -472,7 +479,7 @@ function frame(now) {
       const a = S.air, el = (performance.now() - a.start) / 1000;
       if (a.cancel) { a.done && a.done(); a.done = null; }
       else if (el < 0) drawBars(t, '');
-      else if (el < a.intro) drawStudio(el, a.st, a);
+      else if (el < a.intro) { drawStudio(el, a.st, a); drawLower(el, a.st); }
       else if (el < a.intro + a.clipDur + 0.05 && !(a.mine && vid.ended)) {
         if (a.mine) {
           if (!a.clipStarted) { a.clipStarted = true; vid.currentTime = 0; vid.play().catch(() => {}); }
