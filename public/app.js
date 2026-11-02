@@ -2,6 +2,7 @@
 //   1 Cámara · 2 Redacción · 3 Pampa 7 (tu noticia al aire) · 4 Estudio (ajustes)
 // El noticiero se dibuja en un <canvas>; la vista previa y la descarga usan el mismo pipeline.
 import { SEGMENTS, CLIMA } from './seed.js';
+import { startClip } from './clip.js';
 const W = 640, H = 480;
 const MAX_CLIP = 12;
 const NCH = 6;
@@ -9,6 +10,7 @@ const CH_NAMES = { 1: 'CÁMARA', 2: 'REDACCIÓN', 3: 'PAMPA 7', 4: 'ESTUDIO', 5:
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const cv = $('screen'), g = cv.getContext('2d');
+const CLIP = { current: null };   // gancho que llama el grabador (clip.js) después de dibujar cada cuadro
 const vid = $('vid'), vid2 = $('vid2'), live = $('preview');
 
 const S = {
@@ -32,7 +34,7 @@ fetch('/api/config').then((r) => r.json()).then((c) => { S.config = c; }).catch(
 /* ---------------- OSD: mensajes, badge de canal, volumen ---------------- */
 const timers = {};
 function flash(id, ms) { const el = $(id); el.hidden = false; clearTimeout(timers[id]); timers[id] = setTimeout(() => (el.hidden = true), ms); }
-function say(t, ms = 3200) { if (!S.on || S.rec) return; $('msg').dataset.pos = S.ch === 3 && !S.guide ? 'top' : 'bottom'; $('msg').textContent = t; flash('msg', ms); }
+function say(t, ms = 3200) { if (!S.on) return; $('msg').dataset.pos = S.ch === 3 && !S.guide ? 'top' : 'bottom'; $('msg').textContent = t; flash('msg', ms); }
 function badge() { if (!S.on) return; $('chbadge').innerHTML = `CH ${String(S.ch).padStart(2, '0')}<small>${CH_NAMES[S.ch]}</small>`; flash('chbadge', 2200); }
 function volOsd() {
   const n = S.muted ? 0 : Math.round(S.vol * 10);
@@ -390,16 +392,10 @@ async function runAir(rec, seg) {
     const words = st.conductor.split(/\s+/).length;
     a.intro = buf ? Math.max(4.5, buf.duration + 1) : Math.min(9, Math.max(4.5, words * 0.33 + 1.5));
     a.total = a.intro + a.clipDur + (mine ? 1.6 : 0.6);
-    let recorder = null; const chunks = []; let mime = '';
+    let recorder = null;
     if (record) {
-      try {
-        mime = pickMime();
-        const stream = cv.captureStream(30);
-        S.dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
-        recorder = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 4e6 });
-        recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-        recorder.start(250); a.recording = true;
-      } catch (e) { recorder = null; if (rec) throw e; }   // la grabación automática nunca rompe la emisión
+      try { recorder = await startClip({ screen: cv, ac: S.ac, mix: S.mix, dest: S.dest, onFrame: CLIP }); a.recording = true; }
+      catch (e) { recorder = null; if (rec) throw e; }   // la grabación automática nunca rompe la emisión
     }
     const t0 = S.ac.currentTime + 0.1; sting(t0);
     let src = null;
@@ -410,13 +406,14 @@ async function runAir(rec, seg) {
     await new Promise((res) => { a.done = res; if (a.cancel) res(); });
     vid.pause(); vid2.pause(); src && src.stop(); window.speechSynthesis && speechSynthesis.cancel();
     if (recorder) {
-      await new Promise((res) => { recorder.onstop = res; recorder.stop(); });
-      if (!a.cancel && chunks.length) {
-        const type = recorder.mimeType || mime || 'video/webm', ext = type.includes('mp4') ? 'mp4' : 'webm';
-        S.clip = { blob: new Blob(chunks, { type }), type, ext, key: a.key };
-        if (rec === true) downloadClip(S.clip);
+      let clip = null;
+      try { clip = await recorder.stop(a.cancel); } catch (e) { console.error('No se pudo cerrar el clip:', e); }
+      if (!a.cancel && clip) {
+        const c = { ...clip, key: a.key };
+        if (mine) S.clip = c;
+        if (rec === true || rec === 'dl') downloadClip(c, rec === 'dl');
         if (S.share) renderShareIfOpen();
-      }
+      } else if (rec === 'dl' && !a.cancel) say('No se pudo armar el clip. Probá de nuevo.', 3500);
     }
   }
   S.air = null; S.busy = false; S.mode = 'idle'; renderVote();
@@ -712,7 +709,7 @@ const saveVotes = () => { try { localStorage.setItem('p7votes', JSON.stringify(M
 const votableId = () => (S.on && S.mode === 'air' && S.air && !S.air.cancel && !S.air.mine && S.air.seg?.id ? S.air.seg.id : null);
 function renderVote() {
   const id = votableId(), mine = id ? MY_VOTES[id] || 0 : 0;
-  $('btnTV').disabled = !S.on || !!S.rec;
+  $('btnTV').disabled = !S.on || !!S.recTV || !!S.busy;
   [['btnUp', 1], ['btnDown', -1]].forEach(([b, v]) => { const el = $(b); el.disabled = !id; el.setAttribute('aria-pressed', String(mine === v)); el.classList.toggle('lit', mine === v); });
 }
 async function castVote(v) {
@@ -725,55 +722,23 @@ async function castVote(v) {
 }
 $('btnUp').onclick = () => castVote(1); $('btnDown').onclick = () => castVote(-1);
 
-/* ---------------- Descargar lo que ves: el televisor entero (marco + pantalla) con la voz del navegador ---------------- */
-// La voz del navegador (speechSynthesis) no entra en una grabación del canvas, pero sí en el audio de la pestaña.
-// Por eso se graba la pestaña (getDisplayMedia + Region Capture, recortada al televisor) mientras la noticia sale al aire de nuevo desde el principio.
-// Solo en navegadores que lo permiten (Chrome/Edge en compu); en el resto el botón no aparece.
-const canRecTV = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && window.CropTarget && window.MediaRecorder);
-$('btnTV').hidden = !canRecTV;
-async function recordTV() {
-  if (!canRecTV || S.rec || !S.on) return;
+/* ---------------- Descargar lo que ves: la noticia al aire, con el marco del televisor, como MP4 ---------------- */
+// Se vuelve a emitir desde el principio y se graba en el momento (sin diálogos del navegador). Ver clip.js.
+// La voz del navegador (speechSynthesis) no se puede grabar: el clip lleva cortina, efectos, el texto en pantalla y la voz pregrabada si existe.
+async function downloadOnAir() {
+  if (!S.on || S.busy || S.recTV) return;
   if (S.ch !== 3 && S.ch !== 5) { say('Sintonizá el canal 3 o 5 para descargar un clip.', 3000); return; }
-  ensureAudio();
-  let stream;
-  try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude', systemAudio: 'exclude' }); }
-  catch { say('Descarga cancelada.', 2200); return; }
-  const track = stream.getVideoTracks()[0], saved = { muted: S.muted, vol: S.vol }, cur = S.air && !S.air.cancel ? S.air.seg : null;
-  let ended = false, cleaned = false;
-  const finish = () => {
-    if (cleaned) return; cleaned = true;
-    stream.getTracks().forEach((t) => t.stop());
-    S.rec = false; document.body.classList.remove('rec-tv'); $('btnTV').classList.remove('busy');
-    S.muted = saved.muted; S.vol = saved.vol; applyVolume(); renderVote();
-  };
-  S.rec = true; $('btnTV').classList.add('busy');
-  document.body.classList.add('rec-tv');                       // sin la base del televisor: solo marco y pantalla
-  S.muted = false; S.vol = Math.max(S.vol, 0.7); applyVolume(); // el audio de la pestaña sale de los parlantes: no puede estar en mute
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  try { await track.cropTo(await CropTarget.fromElement($('cabinet'))); }
-  catch { finish(); say('Elegí «Esta pestaña» para grabar el televisor.', 3500); return; }
-  track.addEventListener('ended', () => { ended = true; if (S.air) S.air.cancel = true; });
+  const cur = S.air && !S.air.cancel ? S.air.seg : null;
+  S.recTV = true; $('btnTV').classList.add('busy'); $('btnTV').disabled = true;
   const myLoop = ++S.loopId; await stopAir(); S.staticUntil = performance.now() + 450;
-  const chunks = [], mime = pickMime(), noAudio = !stream.getAudioTracks().length;
-  let rec;
-  try { rec = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 6e6 }); } catch { finish(); say('Este navegador no puede grabar.', 3000); startLoop(); return; }
-  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-  rec.start(250);
-  await sleep(450);
-  const seg = cur && (!cur.mine || ready()) ? cur : nextSeg();
-  if (seg) await onAir(false, seg);
-  await sleep(500);
-  await new Promise((res) => { rec.onstop = res; rec.stop(); });
-  const ok = !ended && S.on && S.loopId === myLoop && chunks.length;
-  finish();
-  if (ok) {
-    const type = rec.mimeType || mime || 'video/webm', ext = type.includes('mp4') ? 'mp4' : 'webm';
-    downloadClip({ blob: new Blob(chunks, { type }), ext }, true);
-    say(noAudio ? 'Descargado, pero sin sonido (marcá «compartir audio de la pestaña»).' : `Descargado como .${ext}. ¡Subilo a tus redes!`, 4500);
-  } else say('Se cortó la grabación. Probá de nuevo sin cambiar de canal.', 3500);
+  try {
+    const seg = cur && (!cur.mine || ready()) ? cur : nextSeg();
+    if (seg) { say('Armando el clip…', 2500); await onAir('dl', seg); }
+  } catch (e) { console.error(e); say('Este navegador no pudo armar el clip.', 3500); }
+  S.recTV = false; $('btnTV').classList.remove('busy'); renderVote();
   if (S.on && (S.ch === 3 || S.ch === 5) && S.loopId === myLoop) startLoop();
 }
-$('btnTV').onclick = () => { blip(660, 0.06); recordTV(); };
+$('btnTV').onclick = () => { blip(660, 0.06); downloadOnAir(); };
 
 /* ---------------- Dibujo ---------------- */
 const scan = document.createElement('canvas'); scan.width = 4; scan.height = 3;
@@ -1005,7 +970,7 @@ function drawFrame(now) {
 // El siguiente cuadro se pide SIEMPRE, antes de dibujar: un error al dibujar (p. ej. una imagen que no cargó) no puede congelar la tele.
 function frame(now) {
   requestAnimationFrame(frame);
-  try { drawFrame(now); } catch (e) { if (!frame.avisado) { frame.avisado = true; console.error('Error al dibujar un cuadro (se sigue emitiendo):', e); } }
+  try { drawFrame(now); CLIP.current && CLIP.current(); } catch (e) { if (!frame.avisado) { frame.avisado = true; console.error('Error al dibujar un cuadro (se sigue emitiendo):', e); } }
 }
 requestAnimationFrame(frame);
 

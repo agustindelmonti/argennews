@@ -9,3 +9,6 @@
 ## Íconos de herramientas (botones «Cómo participar»)
 - Claude, OpenAI (ChatGPT), Google Gemini, Cursor, X e Instagram: del paquete [Simple Icons](https://simpleicons.org/) 15.22.0, licencia CC0 1.0 (dominio público).
 - Los logotipos y nombres son marcas de sus respectivos titulares. Se muestran solo para indicar con qué herramientas es compatible el servidor MCP, sin sugerir afiliación ni respaldo. Si alguna marca pide retirarlos, se reemplazan por el ícono genérico (`link`).
+
+## mp4-muxer
+`public/vendor/mp4-muxer.js` — mp4-muxer 5.2.2 (Vanilla JS MP4 muxer), licencia MIT, © Vanilagy. Texto en `public/vendor/mp4-muxer.LICENSE`.

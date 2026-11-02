@@ -164,7 +164,6 @@ textarea{resize:none}
 .vb.tv{margin-left:clamp(4px,.8vmin,8px)}
 .vb.tv.busy{animation:recblink 1s steps(2,end) infinite;color:#ff6b61}
 @keyframes recblink{50%{opacity:.45}}
-.rec-tv #chin{display:none}   /* mientras se graba el televisor: solo marco y pantalla */
 .vb:focus-visible{outline:3px solid var(--yel);outline-offset:2px}
 
 /* Compartir */
